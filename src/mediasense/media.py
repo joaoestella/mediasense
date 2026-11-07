@@ -28,7 +28,35 @@ def _guard_overwrite(src: str | Path, dst: str | Path) -> None:
         raise MediaError(f"refusing to overwrite the source file {src}; choose another output name")
 
 
+_static_ffmpeg_tried = False
+
+
+def _try_static_ffmpeg() -> bool:
+    """If the optional static-ffmpeg package is installed, fetch FFmpeg binaries (once, ~70 MB) and put
+    them on PATH. Used by the one-click Claude Desktop extension, where users may have no FFmpeg."""
+    global _static_ffmpeg_tried
+    if _static_ffmpeg_tried:
+        return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+    _static_ffmpeg_tried = True
+    try:
+        import contextlib
+        import sys
+
+        import static_ffmpeg  # type: ignore
+    except ImportError:
+        return False
+    try:
+        # it prints download progress to stdout, which would corrupt the MCP stdio channel
+        with contextlib.redirect_stdout(sys.stderr):
+            static_ffmpeg.add_paths(weak=True)
+    except Exception:
+        return False
+    return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+
+
 def require_ffmpeg() -> None:
+    if (shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None) and _try_static_ffmpeg():
+        return
     for tool in ("ffmpeg", "ffprobe"):
         if shutil.which(tool) is None:
             raise MediaError(

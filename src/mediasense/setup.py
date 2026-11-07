@@ -166,7 +166,13 @@ def doctor() -> list[tuple[str, bool | None, str]]:
         except Exception as e:
             out.append(("FFmpeg", False, str(e)))
     else:
-        out.append(("FFmpeg", False, "not found – winget install ffmpeg / brew install ffmpeg / apt install ffmpeg"))
+        try:
+            import static_ffmpeg  # type: ignore  # noqa: F401
+
+            out.append(("FFmpeg", True, "downloaded automatically on first use (static-ffmpeg)"))
+        except ImportError:
+            out.append(("FFmpeg", False,
+                        "not found – winget install ffmpeg / brew install ffmpeg / apt install ffmpeg"))
 
     try:
         import faster_whisper  # type: ignore

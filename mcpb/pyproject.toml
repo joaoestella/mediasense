@@ -1,0 +1,6 @@
+# Dependencies for the Claude Desktop extension (UV runtime). The release workflow pins the version.
+[project]
+name = "mediasense-extension"
+version = "0.0.0"
+requires-python = ">=3.10"
+dependencies = ["mediasense[all,ffmpeg]==0.0.0"]

@@ -1,0 +1,5 @@
+make_icon.py
+__pycache__/
+*.pyc
+.venv/
+uv.lock

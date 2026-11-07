@@ -54,7 +54,7 @@ primeiro erro.
 winget install ffmpeg
 python -m pip install --user pipx
 python -m pipx ensurepath                # depois feche e reabra o terminal
-python -m pipx install "mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
+python -m pipx install "mediasense[all]"
 mediasense setup -n                      # mostra o que vai mudar, sem mudar nada
 mediasense setup
 mediasense doctor
@@ -62,6 +62,13 @@ mediasense doctor
 
 Use `python -m pipx` em vez de só `pipx` logo depois de instalar: o comando `pipx` só aparece num
 terminal novo.
+
+**Extensão de um clique para o Claude Desktop (experimental):** baixe o
+[mediasense.mcpb](https://github.com/joaoestella/mediasense/releases/latest/download/mediasense.mcpb) e dê
+dois cliques, ou arraste para Configurações → Extensões. Não precisa de Python, pipx nem FFmpeg: o Claude
+Desktop prepara o Python sozinho e o FFmpeg é baixado no primeiro uso. A primeira inicialização leva
+alguns minutos. Esse tipo de extensão ainda é novo no Claude Desktop; se não funcionar na sua versão, use
+o instalador acima.
 
 **O que o `mediasense setup` altera:**
 

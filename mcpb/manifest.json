@@ -1,0 +1,69 @@
+{
+  "manifest_version": "0.4",
+  "name": "mediasense",
+  "display_name": "mediasense",
+  "version": "0.0.0",
+  "description": "Watch and listen to videos and audio: summarize, explain, transcribe and edit TikTok, YouTube or Instagram links and local files.",
+  "long_description": "mediasense gives Claude ears and eyes for media. Paste a TikTok, YouTube, Instagram, X or Vimeo link (or point at a file) and ask Claude to summarize it, explain what happens, find when something is said, cut out filler words and pauses, or make subtitles. Everything runs on your computer: the video is downloaded, the speech is transcribed in ~99 languages with a timestamp for every word, and key frames are picked at scene changes. The first use downloads the speech model (~500 MB) and, if needed, FFmpeg (~70 MB). Tip: also add the mediasense skill (Settings → Skills) so Claude uses it for every video link.",
+  "author": {
+    "name": "joaoestella",
+    "url": "https://github.com/joaoestella"
+  },
+  "homepage": "https://github.com/joaoestella/mediasense",
+  "documentation": "https://github.com/joaoestella/mediasense#readme",
+  "support": "https://github.com/joaoestella/mediasense/issues",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/joaoestella/mediasense"
+  },
+  "icon": "icon.png",
+  "license": "MIT",
+  "keywords": ["video", "audio", "transcription", "whisper", "tiktok", "youtube", "subtitles", "editing"],
+  "server": {
+    "type": "uv",
+    "entry_point": "src/server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "src/server.py"],
+      "env": {
+        "MEDIASENSE_HOME": "${user_config.download_folder}",
+        "MEDIASENSE_COOKIES_FROM_BROWSER": "${user_config.cookies_browser}"
+      }
+    }
+  },
+  "tools": [
+    {"name": "understand_media", "description": "Summarize, explain or answer questions about a video/audio link or file (transcript + key frames + metadata)."},
+    {"name": "check_job", "description": "Get the result of long work that replied 'still working'."},
+    {"name": "transcribe", "description": "Speech to text with a timestamp for every word."},
+    {"name": "read_transcript", "description": "Read a transcript, optionally a time range or per-word times."},
+    {"name": "search_transcript", "description": "Find every time a word or phrase is said."},
+    {"name": "plan_edit", "description": "Preview cuts: phrases, passages, filler words, silences, time ranges."},
+    {"name": "render_edit", "description": "Write the edited file and/or EDL, FCPXML and re-timed subtitles."},
+    {"name": "export_transcript", "description": "Export subtitles and text: SRT, VTT, TXT, CSV, JSON."},
+    {"name": "place_audio", "description": "Insert an audio clip into a video at a timestamp (mix, duck or replace)."},
+    {"name": "watch_video", "description": "Key-frame contact sheets with what is said in each shot."},
+    {"name": "get_frame", "description": "One video frame at a given time."},
+    {"name": "media_info", "description": "Duration, resolution, fps and streams of a file."}
+  ],
+  "prompts_generated": true,
+  "user_config": {
+    "download_folder": {
+      "type": "directory",
+      "title": "Download folder",
+      "description": "Where videos downloaded from links are kept (and reused).",
+      "required": false,
+      "default": "${DOWNLOADS}/mediasense"
+    },
+    "cookies_browser": {
+      "type": "string",
+      "title": "Browser cookies for blocked sites (optional)",
+      "description": "Leave empty. If a site refuses downloads, type firefox (or chrome, edge, brave) to use your browser's login.",
+      "required": false,
+      "default": ""
+    }
+  },
+  "compatibility": {
+    "platforms": ["darwin", "win32", "linux"],
+    "runtimes": {"python": ">=3.10"}
+  }
+}

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mediasense"
-version = "0.4.0"
+version = "0.4.1"
 description = "Give Claude ears and eyes: understand, summarize and edit audio/video files or links (TikTok, YouTube…) with word-level timestamps. MCP server + CLI, runs locally."
 readme = "README.md"
 license = { text = "MIT" }
@@ -24,6 +24,8 @@ whisper = ["faster-whisper>=1.0", "numpy"]
 whisperx = ["whisperx>=3.1"]
 api = ["openai>=1.30"]
 url = ["yt-dlp[default,curl-cffi]>=2024.1"]
+# downloads FFmpeg automatically when it isn't installed (used by the Claude Desktop extension)
+ffmpeg = ["static-ffmpeg>=2.5"]
 # NVIDIA GPU acceleration without installing the CUDA toolkit (~1.5 GB download)
 gpu = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10", "nvidia-cuda-runtime-cu12"]
 mcp = ["mcp>=1.2"]

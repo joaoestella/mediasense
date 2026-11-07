@@ -5,7 +5,8 @@
 # Installs (only what's missing): FFmpeg, pipx, mediasense — then connects it to Claude Desktop / Claude Code.
 set -eu
 
-PACKAGE="${MEDIASENSE_PACKAGE:-mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip}"
+PACKAGE="${MEDIASENSE_PACKAGE:-mediasense[all]}"
+FALLBACK="mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
 step() { printf '\n\033[36m==> %s\033[0m\n' "$1"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
@@ -51,7 +52,11 @@ $PIPX ensurepath >/dev/null 2>&1 || true
 export PATH="$HOME/.local/bin:$PATH"
 
 step "Installing mediasense (a few minutes)"
-$PIPX install --force "$PACKAGE"
+if ! $PIPX install --force "$PACKAGE"; then
+  if [ -n "${MEDIASENSE_PACKAGE:-}" ]; then exit 1; fi
+  echo "Not on PyPI yet (or PyPI unreachable) - installing from GitHub instead..."
+  $PIPX install --force "$FALLBACK"
+fi
 
 step "Connecting to Claude"
 mediasense setup

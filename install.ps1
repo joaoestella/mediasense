@@ -11,9 +11,8 @@ try { [Console]::OutputEncoding = [System.Text.Encoding]::UTF8 } catch {}
 $env:PYTHONIOENCODING = "utf-8"
 $env:PYTHONUTF8 = "1"
 
-$Package = if ($env:MEDIASENSE_PACKAGE) { $env:MEDIASENSE_PACKAGE } else {
-    "mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
-}
+$Package = if ($env:MEDIASENSE_PACKAGE) { $env:MEDIASENSE_PACKAGE } else { "mediasense[all]" }
+$Fallback = "mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
 
 function Step($msg) { Write-Host "`n==> $msg" -ForegroundColor Cyan }
 function Have($cmd) { [bool](Get-Command $cmd -ErrorAction SilentlyContinue) }
@@ -90,6 +89,10 @@ try {
 
     Step "Installing mediasense (downloads ~200 MB of libraries, takes a few minutes)"
     & $py -m pipx install --force $Package
+    if ($LASTEXITCODE -ne 0 -and -not $env:MEDIASENSE_PACKAGE) {
+        Write-Host "Not on PyPI yet (or PyPI unreachable) - installing from GitHub instead..."
+        & $py -m pipx install --force $Fallback
+    }
     Check "pipx install mediasense"
 
     $binDir = Quiet { & $py -m pipx environment --value PIPX_BIN_DIR }

@@ -63,7 +63,7 @@ macOS/Linux) and `pipx` via pip — then `pipx install`s mediasense from this re
 winget install ffmpeg                    # macOS: brew install ffmpeg · Linux: sudo apt install ffmpeg
 python -m pip install --user pipx
 python -m pipx ensurepath                # then close and reopen the terminal
-python -m pipx install "mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
+python -m pipx install "mediasense[all]"
 mediasense setup -n                      # preview what setup will change
 mediasense setup
 mediasense doctor
@@ -71,6 +71,16 @@ mediasense doctor
 
 Use `python -m pipx …` rather than plain `pipx` right after installing it: the `pipx` command only
 appears on PATH in a new terminal. No Git needed.
+</details>
+
+<details>
+<summary>One-click Claude Desktop extension (experimental)</summary>
+
+Download **[mediasense.mcpb](https://github.com/joaoestella/mediasense/releases/latest/download/mediasense.mcpb)**
+and double-click it (or drag it into Claude Desktop → Settings → Extensions). No Python, pipx or
+FFmpeg needed: Claude Desktop sets up Python by itself, and FFmpeg is downloaded on first use. The
+first start takes a few minutes while it installs everything. This uses Claude Desktop's new "UV"
+extension type, so if it doesn't work on your version, use the installer above.
 </details>
 
 ### What `mediasense setup` changes
@@ -193,6 +203,16 @@ pytest
 The tests build synthetic audio/video with FFmpeg and use fake model and downloader libraries, so they
 run in seconds with nothing to download. Ideas welcome: more filler words for your language, a
 one-click Claude Desktop extension (`.mcpb`), and a GUI.
+
+## Releasing
+
+1. Bump `version` in `pyproject.toml` and `src/mediasense/__init__.py`, commit.
+2. `git tag vX.Y.Z && git push origin vX.Y.Z`. The Release workflow publishes to PyPI and creates a
+   GitHub release with the wheel, `mediasense-skill.zip` and `mediasense.mcpb`.
+
+One-time PyPI setup (trusted publishing, no token): on pypi.org → *Your account → Publishing → Add a
+new pending publisher*: project `mediasense`, owner `joaoestella`, repository `mediasense`, workflow
+`release.yml`, environment left empty.
 
 ## License
 

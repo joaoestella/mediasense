@@ -139,3 +139,43 @@ def test_render_refuses_to_overwrite_source(audio_file):
 
     with pytest.raises(MediaError, match="overwrite"):
         render_keep(audio_file, [(0, 1)], audio_file)
+
+
+def test_static_ffmpeg_fallback(monkeypatch, tmp_path, capsys):
+    """When FFmpeg is missing, the optional static-ffmpeg package supplies it – without writing to stdout
+    (the MCP channel)."""
+    import shutil as _sh
+    import sys
+    import types
+
+    from mediasense import media
+
+    real_ffmpeg = _sh.which("ffmpeg")
+    bindir = tmp_path / "bin"
+    bindir.mkdir()
+    for tool in ("ffmpeg", "ffprobe"):
+        (bindir / tool).symlink_to(_sh.which(tool))
+
+    def add_paths(weak=False):
+        print("Downloading https://example/ffmpeg.zip")  # what the real package does
+        monkeypatch.setenv("PATH", str(bindir))
+        return True
+
+    monkeypatch.setitem(sys.modules, "static_ffmpeg", types.SimpleNamespace(add_paths=add_paths))
+    monkeypatch.setattr(media, "_static_ffmpeg_tried", False)
+    monkeypatch.setenv("PATH", str(tmp_path / "empty"))
+    assert real_ffmpeg and media.shutil.which("ffmpeg") is None
+    media.require_ffmpeg()
+    out = capsys.readouterr()
+    assert out.out == "" and "Downloading" in out.err
+    assert media.shutil.which("ffprobe") == str(bindir / "ffprobe")
+
+
+def test_missing_ffmpeg_message(monkeypatch, tmp_path):
+    from mediasense import media
+
+    monkeypatch.setitem(__import__("sys").modules, "static_ffmpeg", None)
+    monkeypatch.setattr(media, "_static_ffmpeg_tried", False)
+    monkeypatch.setenv("PATH", str(tmp_path))
+    with pytest.raises(media.MediaError, match="Install FFmpeg"):
+        media.require_ffmpeg()
