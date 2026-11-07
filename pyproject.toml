@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "wordcut"
+version = "0.1.0"
+description = "Transcribe audio/video in ~99 languages with a timestamp for every word, edit it by text, and let AI assistants watch videos. CLI + MCP server."
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["whisper", "transcription", "word timestamps", "video editing", "subtitles", "mcp", "claude", "ffmpeg"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Topic :: Multimedia :: Sound/Audio :: Speech",
+  "Topic :: Multimedia :: Video :: Non-Linear Editor",
+]
+dependencies = ["pillow>=9.0"]
+
+[project.optional-dependencies]
+whisper = ["faster-whisper>=1.0"]
+whisperx = ["whisperx>=3.1"]
+api = ["openai>=1.30"]
+mcp = ["mcp>=1.2"]
+all = ["faster-whisper>=1.0", "mcp>=1.2"]
+dev = ["pytest>=7", "ruff"]
+
+[project.scripts]
+wordcut = "wordcut.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/OWNER/wordcut"
+Issues = "https://github.com/OWNER/wordcut/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/wordcut"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
+ignore = ["B905"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/wordcut/export.py" = ["E501"]  # FCPXML template
