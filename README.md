@@ -18,35 +18,37 @@ and contact-sheet images. Nothing is uploaded anywhere.
 
 [Português 🇧🇷](README.pt-BR.md)
 
-## Setup (5 minutes)
+## Setup
 
-1. **Install FFmpeg**: `winget install ffmpeg` (Windows) · `brew install ffmpeg` (macOS) ·
-   `sudo apt install ffmpeg` (Linux).
-2. **Install mediasense**:
+**Windows** – paste in PowerShell:
 
-   ```bash
-   pipx install "mediasense[all] @ git+https://github.com/joaoestella/mediasense"
-   ```
+```powershell
+irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 | iex
+```
 
-   No pipx? `python -m pip install --user pipx`, then `python -m pipx ensurepath` and reopen the terminal.
-3. **Connect it to Claude**
+**macOS / Linux** – paste in a terminal:
 
-   *Claude Code*
+```bash
+curl -LsSf https://raw.githubusercontent.com/joaoestella/mediasense/main/install.sh | sh
+```
 
-   ```bash
-   claude mcp add mediasense -- mediasense mcp
-   ```
+That installs whatever is missing (Python, FFmpeg, pipx), installs mediasense and connects it to Claude
+Desktop and Claude Code. Then **quit Claude Desktop completely** (tray/menu-bar icon → Quit), open it
+again and ask *"summarize this video: <link>"*. The first transcription downloads the speech model
+(≈ 500 MB).
 
-   *Claude Desktop*: Settings → Developer → Edit Config, add the block below, then restart Claude.
+<details>
+<summary>Manual setup</summary>
 
-   ```json
-   { "mcpServers": { "mediasense": { "command": "mediasense", "args": ["mcp"] } } }
-   ```
+1. Install FFmpeg: `winget install ffmpeg` · `brew install ffmpeg` · `sudo apt install ffmpeg`
+2. `pipx install "mediasense[all] @ git+https://github.com/joaoestella/mediasense"`
+3. `mediasense setup` – adds mediasense to Claude Desktop's config (keeping your other settings and a
+   backup) and to Claude Code if it's installed. `--desktop` / `--code` to pick one, `-n` to preview.
 
-   If Claude says it can't start the server, replace `"mediasense"` with the full path printed by
-   `where mediasense` (Windows) or `which mediasense` (macOS/Linux).
+</details>
 
-The first transcription downloads the speech model (≈ 500 MB for the default `small`).
+Something not working? `mediasense doctor` checks FFmpeg, the speech model, the GPU, link downloads and
+the Claude connection.
 
 > **Note:** Claude Desktop sends files you attach in the chat to the model, not to your computer, so give
 > mediasense a **link or a file path** instead (in Claude Code you can drag the file into the terminal).

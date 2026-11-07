@@ -15,29 +15,25 @@ O mediasense roda **no seu computador**: baixa o link, transcreve a fala em cerc
 tempo de cada palavra, separa quadros nas mudanças de cena e entrega ao Claude a transcrição, a lista de
 cenas e as imagens. Nada é enviado para fora.
 
-## Instalação (5 minutos)
+## Instalação
 
-1. **FFmpeg**: `winget install ffmpeg` (Windows) · `brew install ffmpeg` (macOS) · `sudo apt install ffmpeg`.
-2. **mediasense**:
+**Windows**: cole no PowerShell:
 
-   ```bash
-   pipx install "mediasense[all] @ git+https://github.com/joaoestella/mediasense"
-   ```
+```powershell
+irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 | iex
+```
 
-   Se não tiver o pipx: `python -m pip install --user pipx`, depois `python -m pipx ensurepath` e reabra o terminal.
-3. **Conectar ao Claude**
+**macOS / Linux**: cole no terminal:
 
-   *Claude Code*: `claude mcp add mediasense -- mediasense mcp`
+```bash
+curl -LsSf https://raw.githubusercontent.com/joaoestella/mediasense/main/install.sh | sh
+```
 
-   *Claude Desktop*: em Configurações → Desenvolvedor → Editar configuração, adicione o bloco abaixo e
-   reinicie o Claude.
+O instalador coloca o que estiver faltando (Python, FFmpeg, pipx), instala o mediasense e conecta ao
+Claude Desktop e ao Claude Code. Depois, **feche o Claude Desktop de verdade** (ícone perto do relógio →
+Quit), abra de novo e peça: *"resume esse vídeo: <link>"*.
 
-   ```json
-   { "mcpServers": { "mediasense": { "command": "mediasense", "args": ["mcp"] } } }
-   ```
-
-   Se o Claude não conseguir iniciar, troque `"mediasense"` pelo caminho completo que aparece em
-   `where mediasense` (Windows) ou `which mediasense` (macOS/Linux).
+Se já tiver tudo instalado, basta rodar `mediasense setup`. Se algo der errado, rode `mediasense doctor`.
 
 > **Importante:** no Claude Desktop, arquivos anexados no chat vão para o modelo, e não para o seu
 > computador. Mande um **link ou o caminho do arquivo**. No Claude Code, dá para arrastar o arquivo

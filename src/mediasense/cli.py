@@ -172,6 +172,31 @@ def cmd_fetch(args) -> int:
     return 0
 
 
+def cmd_setup(args) -> int:
+    from .setup import setup
+
+    only_desktop, only_code = args.desktop, args.code
+    lines = setup(desktop=not only_code or only_desktop, code=not only_desktop or only_code,
+                  cookies_browser=args.cookies_browser, dry_run=args.dry_run)
+    for line in lines:
+        print(line)
+    if not args.dry_run:
+        print("\nTry it: ask Claude \"summarize this video: <link>\". Run `mediasense doctor` if something's off.")
+    return 0
+
+
+def cmd_doctor(args) -> int:
+    from .setup import doctor
+
+    worst = 0
+    for name, ok, detail in doctor():
+        mark = "OK " if ok else ("-- " if ok is None else "!! ")
+        if ok is False:
+            worst = 1
+        print(f"{mark} {name:<36} {detail}")
+    return worst
+
+
 def cmd_mcp(args) -> int:
     from .mcp_server import main
 
@@ -295,6 +320,17 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--max-gap", type=float, help="add a frame at least this often, seconds (auto)")
     s.add_argument("--width", type=int, default=768)
     s.set_defaults(func=cmd_storyboard)
+
+    s = sub.add_parser("setup", help="connect mediasense to Claude Desktop and Claude Code")
+    s.add_argument("--desktop", action="store_true", help="only Claude Desktop")
+    s.add_argument("--code", action="store_true", help="only Claude Code")
+    s.add_argument("--cookies-browser", metavar="NAME",
+                   help="let link downloads use this browser's cookies (e.g. firefox), for sites that block bots")
+    s.add_argument("-n", "--dry-run", action="store_true", help="show what would change")
+    s.set_defaults(func=cmd_setup)
+
+    s = sub.add_parser("doctor", help="check FFmpeg, model, GPU, links and the Claude connection")
+    s.set_defaults(func=cmd_doctor)
 
     s = sub.add_parser("mcp", help="run the MCP server (stdio) for Claude and other MCP clients")
     s.set_defaults(func=cmd_mcp)
