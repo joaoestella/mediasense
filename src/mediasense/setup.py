@@ -100,8 +100,12 @@ def configure_code(env: dict[str, str] | None = None, dry_run: bool = False) -> 
     add += ["--", *cmd]
     if dry_run:
         return "Claude Code: would run " + " ".join(add)
-    subprocess.run([claude, "mcp", "remove", "--scope", "user", SERVER_NAME], capture_output=True, text=True)
-    proc = subprocess.run(add, capture_output=True, text=True)
+    try:
+        subprocess.run([claude, "mcp", "remove", "--scope", "user", SERVER_NAME], capture_output=True, text=True,
+                       timeout=60)
+        proc = subprocess.run(add, capture_output=True, text=True, timeout=60)
+    except (OSError, subprocess.SubprocessError) as e:
+        return f"Claude Code: failed ({e})"
     if proc.returncode != 0:
         return f"Claude Code: failed ({(proc.stderr or proc.stdout).strip()[:200]})"
     return "Claude Code: added (available in every project; check with `claude mcp list`)"
@@ -132,7 +136,7 @@ def doctor() -> list[tuple[str, bool | None, str]]:
     ff = shutil.which("ffmpeg")
     if ff:
         try:
-            first = subprocess.run(["ffmpeg", "-version"], capture_output=True, text=True).stdout.splitlines()[0]
+            first = subprocess.run([ff, "-version"], capture_output=True, text=True).stdout.splitlines()[0]
             out.append(("FFmpeg", True, first.replace("ffmpeg version ", "").split(" Copyright")[0]))
         except Exception as e:
             out.append(("FFmpeg", False, str(e)))
@@ -177,10 +181,16 @@ def doctor() -> list[tuple[str, bool | None, str]]:
             pass
     out.append(("Claude Desktop", bool(configured) or None,
                 f"configured in {configured[0]}" if configured else "not configured – run `mediasense setup`"))
-    if shutil.which("claude"):
-        proc = subprocess.run(["claude", "mcp", "get", SERVER_NAME], capture_output=True, text=True)
-        out.append(("Claude Code", proc.returncode == 0 or None,
-                    "configured" if proc.returncode == 0 else "not configured – run `mediasense setup`"))
+    claude = shutil.which("claude")
+    if claude:
+        # full path: on Windows `claude` is a .cmd shim that subprocess can't find by bare name
+        try:
+            proc = subprocess.run([claude, "mcp", "get", SERVER_NAME], capture_output=True, text=True,
+                                  timeout=60)
+            ok = proc.returncode == 0
+            out.append(("Claude Code", ok or None, "configured" if ok else "not configured – run `mediasense setup`"))
+        except (OSError, subprocess.SubprocessError) as e:
+            out.append(("Claude Code", None, f"couldn't check ({e})"))
     return out
 
 

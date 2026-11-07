@@ -67,3 +67,23 @@ def test_doctor_runs(monkeypatch, tmp_path, capsys):
     assert checks["FFmpeg"] is True and "Claude Desktop" in checks
     main(["doctor"])
     assert "FFmpeg" in capsys.readouterr().out
+
+
+def test_doctor_uses_full_claude_path_and_survives_errors(monkeypatch, tmp_path):
+    monkeypatch.setenv("MEDIASENSE_CLAUDE_CONFIG", str(tmp_path / "none.json"))
+    real_which = st.shutil.which
+    monkeypatch.setattr(st.shutil, "which",
+                        lambda n: r"C:\\npm\\claude.cmd" if n == "claude" else real_which(n))
+    seen = []
+    real_run = st.subprocess.run
+
+    def fake_run(cmd, **k):
+        if cmd[0].endswith("claude.cmd"):
+            seen.append(cmd)
+            raise FileNotFoundError(2, "The system cannot find the file specified")
+        return real_run(cmd, **k)
+
+    monkeypatch.setattr(st.subprocess, "run", fake_run)
+    checks = {name: (ok, detail) for name, ok, detail in st.doctor()}
+    assert seen and seen[0][0].endswith("claude.cmd")
+    assert checks["Claude Code"][0] is None and "couldn't check" in checks["Claude Code"][1]
