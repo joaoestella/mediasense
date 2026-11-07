@@ -1,5 +1,7 @@
+import os
 import xml.etree.ElementTree as ET
 from fractions import Fraction
+from pathlib import Path
 
 import pytest
 
@@ -151,14 +153,13 @@ def test_static_ffmpeg_fallback(monkeypatch, tmp_path, capsys):
     from mediasense import media
 
     real_ffmpeg = _sh.which("ffmpeg")
-    bindir = tmp_path / "bin"
-    bindir.mkdir()
-    for tool in ("ffmpeg", "ffprobe"):
-        (bindir / tool).symlink_to(_sh.which(tool))
+    # the folder of the real FFmpeg stands in for the one static-ffmpeg downloads (no symlinks: on
+    # Windows they need extra rights and which() only finds names ending in .exe)
+    dirs = {str(Path(_sh.which(tool)).parent) for tool in ("ffmpeg", "ffprobe")}
 
     def add_paths(weak=False):
         print("Downloading https://example/ffmpeg.zip")  # what the real package does
-        monkeypatch.setenv("PATH", str(bindir))
+        monkeypatch.setenv("PATH", os.pathsep.join(sorted(dirs)))
         return True
 
     monkeypatch.setitem(sys.modules, "static_ffmpeg", types.SimpleNamespace(add_paths=add_paths))
@@ -168,7 +169,7 @@ def test_static_ffmpeg_fallback(monkeypatch, tmp_path, capsys):
     media.require_ffmpeg()
     out = capsys.readouterr()
     assert out.out == "" and "Downloading" in out.err
-    assert media.shutil.which("ffprobe") == str(bindir / "ffprobe")
+    assert str(Path(media.shutil.which("ffprobe")).parent) in dirs
 
 
 def test_missing_ffmpeg_message(monkeypatch, tmp_path):
