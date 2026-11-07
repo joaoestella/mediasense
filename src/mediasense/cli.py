@@ -185,6 +185,22 @@ def cmd_setup(args) -> int:
     return 0
 
 
+def cmd_skill(args) -> int:
+    from .skill import DESKTOP_HOWTO, install_claude_code_skill, skill_text, write_skill_zip
+
+    if args.print:
+        print(skill_text())
+        return 0
+    if args.claude_code:
+        print(install_claude_code_skill())
+        return 0
+    from .fetch import download_dir
+
+    path = write_skill_zip(args.output or download_dir())
+    print(DESKTOP_HOWTO.format(zip=path))
+    return 0
+
+
 def cmd_doctor(args) -> int:
     from .setup import doctor
 
@@ -328,6 +344,12 @@ def build_parser() -> argparse.ArgumentParser:
                    help="let link downloads use this browser's cookies (e.g. firefox), for sites that block bots")
     s.add_argument("-n", "--dry-run", action="store_true", help="show what would change")
     s.set_defaults(func=cmd_setup)
+
+    s = sub.add_parser("skill", help="the Claude skill: zip for Claude Desktop, or install for Claude Code")
+    s.add_argument("-o", "--output", help="where to write mediasense-skill.zip (default: ~/Downloads/mediasense)")
+    s.add_argument("--claude-code", action="store_true", help="install into ~/.claude/skills instead")
+    s.add_argument("--print", action="store_true", help="print SKILL.md")
+    s.set_defaults(func=cmd_skill)
 
     s = sub.add_parser("doctor", help="check FFmpeg, model, GPU, links and the Claude connection")
     s.set_defaults(func=cmd_doctor)

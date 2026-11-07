@@ -94,6 +94,13 @@ try {
     Write-Host ""
     & $exe doctor
 
+    $skillZip = Join-Path $env:USERPROFILE "Downloads\mediasense\mediasense-skill.zip"
+    if (Test-Path $skillZip) {
+        Write-Host "`nOne more step: in Claude open Settings > Skills and upload mediasense-skill.zip" -ForegroundColor Yellow
+        Write-Host "(opening the folder for you). It makes Claude use mediasense for video links." -ForegroundColor Yellow
+        Start-Process explorer.exe "/select,`"$skillZip`""
+    }
+
     Write-Host "`nDone! Quit Claude Desktop completely (tray icon > Quit), open it again and ask:" -ForegroundColor Green
     Write-Host '  "summarize this video: <paste a TikTok/YouTube link>"' -ForegroundColor Green
     Write-Host "The first transcription downloads the speech model (~500 MB)."

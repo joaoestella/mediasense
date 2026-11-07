@@ -27,6 +27,12 @@ def _ff(*args: str) -> None:
     subprocess.run(["ffmpeg", "-y", "-v", "error", *args], check=True)
 
 
+@pytest.fixture(autouse=True)
+def _isolated_downloads(tmp_path, monkeypatch):
+    """Never write into the real ~/Downloads/mediasense or ~/.claude during tests."""
+    monkeypatch.setenv("MEDIASENSE_HOME", str(tmp_path / "mediasense-home"))
+
+
 @pytest.fixture(scope="session")
 def media_dir(tmp_path_factory):
     return tmp_path_factory.mktemp("media")

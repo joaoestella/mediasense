@@ -121,6 +121,8 @@ def configure_code(env: dict[str, str] | None = None, dry_run: bool = False) -> 
 
 def setup(desktop: bool = True, code: bool = True, cookies_browser: str | None = None,
           dry_run: bool = False) -> list[str]:
+    from .skill import DESKTOP_HOWTO, install_claude_code_skill, write_skill_zip
+
     env = {"MEDIASENSE_COOKIES_FROM_BROWSER": cookies_browser} if cookies_browser else None
     lines = []
     if desktop:
@@ -129,8 +131,21 @@ def setup(desktop: bool = True, code: bool = True, cookies_browser: str | None =
                 lines.append(configure_desktop(p, env, dry_run))
             except (ValueError, OSError) as e:
                 lines.append(f"Claude Desktop: {e}")
+        if not dry_run:
+            from .fetch import download_dir
+
+            try:
+                lines.append(DESKTOP_HOWTO.format(zip=write_skill_zip(download_dir())))
+            except OSError as e:
+                lines.append(f"Claude Desktop skill: couldn't write the zip ({e})")
     if code:
-        lines.append(configure_code(env, dry_run))
+        status = configure_code(env, dry_run)
+        lines.append(status)
+        if not status.startswith("Claude Code: not found"):
+            try:
+                lines.append(install_claude_code_skill(dry_run=dry_run))
+            except OSError as e:
+                lines.append(f"Claude Code skill: failed ({e})")
     return lines
 
 

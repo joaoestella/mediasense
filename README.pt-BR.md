@@ -70,6 +70,17 @@ terminal novo.
 
 Se algo der errado, rode `mediasense doctor`.
 
+### Ensine o Claude a usar (recomendado)
+
+O mediasense vem com uma **skill**: um guia curto que faz o Claude usar o mediasense sempre que você
+colar um link de vídeo, em vez de tentar abrir a página (o TikTok e outros sites bloqueiam).
+
+- **Claude Code:** o `mediasense setup` instala sozinho.
+- **Claude Desktop / claude.ai:** baixe o
+  [mediasense-skill.zip](https://github.com/joaoestella/mediasense/releases/latest/download/mediasense-skill.zip)
+  (o instalador também salva em `Downloads/mediasense/`) e, no Claude, abra **Configurações → Skills** e
+  envie o arquivo. Só precisa fazer uma vez; vale para todos os seus dispositivos.
+
 > **Importante:** no Claude Desktop, arquivos anexados no chat vão para o modelo, e não para o seu
 > computador. Mande um **link ou o caminho do arquivo**. No Claude Code, dá para arrastar o arquivo
 > para o terminal.

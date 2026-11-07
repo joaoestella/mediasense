@@ -57,5 +57,6 @@ step "Connecting to Claude"
 mediasense setup
 mediasense doctor || true
 
+printf '\n\033[33mOne more step: in Claude open Settings > Skills and upload ~/Downloads/mediasense/mediasense-skill.zip\033[0m\n'
 printf '\n\033[32mDone! Restart Claude Desktop and ask: "summarize this video: <link>"\033[0m\n'
 echo "Open a new terminal to use the mediasense command. The first transcription downloads the speech model (~500 MB)."

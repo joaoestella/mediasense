@@ -1,6 +1,6 @@
 ---
 name: mediasense
-description: Watch and listen to videos and audio for the user - TikTok, YouTube, Instagram Reels, X, Vimeo links or local files (voice notes, podcasts, recordings). Use whenever the user shares a media link or file and wants it summarized, explained, transcribed, searched, captioned or edited, using the mediasense tools instead of fetching the page or opening a browser.
+description: Watch and listen to videos and audio (TikTok, YouTube, Instagram, X, Vimeo links or files) to summarize, explain, transcribe or edit them with the mediasense tools instead of opening the page.
 ---
 
 # mediasense

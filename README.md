@@ -83,6 +83,17 @@ appears on PATH in a new terminal. No Git needed.
 Something not working? `mediasense doctor` checks FFmpeg, the speech model, the GPU, link downloads and
 the Claude connection.
 
+### Teach Claude when to use it (recommended)
+
+mediasense comes with a **skill**: a short guide that makes Claude reach for mediasense whenever you
+paste a video link, instead of trying to open the page (TikTok & co. block that).
+
+- **Claude Code:** installed automatically by `mediasense setup`.
+- **Claude Desktop / claude.ai:** download
+  [mediasense-skill.zip](https://github.com/joaoestella/mediasense/releases/latest/download/mediasense-skill.zip)
+  (the installer also saves it to `Downloads/mediasense/`), then in Claude open **Settings → Skills** and
+  upload it. One time only; it syncs to all your devices.
+
 > **Note:** Claude Desktop sends files you attach in the chat to the model, not to your computer, so give
 > mediasense a **link or a file path** instead (in Claude Code you can drag the file into the terminal).
 
