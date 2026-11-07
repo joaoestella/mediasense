@@ -11,6 +11,10 @@ você: limpa ~/Desktop/podcast.m4a, tira os "é..." e as pausas longas
 você: faz legenda curta para ~/Videos/reel.mp4
 ```
 
+![mediasense no Claude: um link do TikTok é baixado, transcrito e resumido com horários](docs/demo.gif)
+
+<sub>Exemplo ilustrativo, com um vídeo fictício.</sub>
+
 O mediasense roda **no seu computador**: baixa o link, transcreve a fala em cerca de 99 idiomas com o
 tempo de cada palavra, separa quadros nas mudanças de cena e entrega ao Claude a transcrição, a lista de
 cenas e as imagens. Nada é enviado para fora.
