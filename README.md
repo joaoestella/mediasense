@@ -14,7 +14,8 @@ you: put intro.mp3 under the first 5 seconds of talk.mp4, ducked
 
 ![mediasense in Claude: a TikTok link is downloaded, transcribed and summarized with timestamps](docs/demo.gif)
 
-<sub>Illustrative example with a fictional video. Regenerate with `python docs/make_demo.py`.</sub>
+<sub>Real output for a 17-second TikTok by @elim.doc, shown with the creator's permission. Regenerate the
+animation with `python docs/make_demo.py`.</sub>
 
 mediasense runs **on your computer**: it downloads the link, transcribes speech in ~99 languages with a
 timestamp for every word, picks key frames at scene changes, and hands Claude a transcript, a shot list

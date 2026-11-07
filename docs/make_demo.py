@@ -1,6 +1,6 @@
-"""Render docs/demo.gif – an illustrative chat showing mediasense at work.
+"""Render docs/demo.gif – mediasense at work in a Claude chat.
 
-The video in the demo is fictional; the flow (link → progress → summary with timestamps) is the real one.
+The summary is the real output for a 17-second TikTok by @elim.doc, used with the creator's permission.
 Run:  python docs/make_demo.py
 """
 
@@ -37,25 +37,26 @@ FS = font(14)
 FM = font(14, mono=True)
 FT = font(15, bold=True)
 
-PROMPT = "summarize this video: https://www.tiktok.com/@coffee.example/video/7350…"
+PROMPT = "summarize this video: https://www.tiktok.com/@elim.doc/video/7649885192869580040"
 STAGES = [
     ("downloading the video", None),
-    ("transcribing", 18),
-    ("transcribing", 47),
-    ("transcribing", 83),
+    ("transcribing", 35),
+    ("transcribing", 80),
     ("picking key frames", None),
 ]
+DONE = "done – transcript (en, 85 words), 6 shots, key frames"
 ANSWER = [
-    ("b", "Perfect pour-over coffee in 60 seconds  (@coffee.example · 1:02)"),
+    ("b", "Close-set vs. wide-set eyes  (@elim.doc · 0:17)"),
     ("", ""),
-    ("t", "0:04", "Grind 15 g of beans medium-fine, about like sea salt."),
-    ("t", "0:15", "Rinse the paper filter with hot water and pour that water out."),
-    ("t", "0:24", "Bloom: 30 g of water at 93 °C, then wait 30 seconds."),
-    ("t", "0:41", "Pour the remaining 220 g in slow circles, centre outwards."),
-    ("t", "0:55", "Tip: bitter coffee means grind coarser; sour means finer."),
+    ("t", "0:00", "Asks whether your eyes are close-set or wide-set."),
+    ("t", "0:03", "Says not to jump to cosmetic procedures just yet."),
+    ("t", "0:06", "Brow styling and the base of the nose change how far"),
+    ("c", "", "apart the eyes look."),
+    ("t", "0:11", "Shows how to make close-set eyes look wider apart,"),
+    ("t", "0:14", "and wide-set eyes closer: an on-screen table goes from"),
+    ("c", "", "everyday habits and makeup up to injectables and surgery."),
     ("", ""),
-    ("m", "On screen at 0:24 the scale reads 30 g, and at 0:55 she shows"),
-    ("m", "two cups side by side to compare the grind sizes."),
+    ("m", "The full sheet is free via the link in his bio (from the post description)."),
 ]
 
 
@@ -82,14 +83,14 @@ def user_bubble(d: ImageDraw.ImageDraw, text: str, cursor: bool) -> int:
 
 def tool_chip(d: ImageDraw.ImageDraw, y: int, stage: str, pct: int | None, done: bool, spin: int) -> int:
     label = "mediasense · understand_media"
-    d.rounded_rectangle((40, y, 520, y + 58), radius=12, fill=CHIP)
+    d.rounded_rectangle((40, y, 560, y + 58), radius=12, fill=CHIP)
     if done:
         d.text((58, y + 18), "✓", font=FB, fill=GREEN, anchor="lm")
     else:
         dots = "◐◓◑◒"[spin % 4]
         d.text((58, y + 18), dots, font=FB, fill=ACCENT, anchor="lm")
     d.text((84, y + 18), label, font=FB, fill=TEXT, anchor="lm")
-    status = "done – transcript, 9 shots, key frames" if done else stage + (f"  {pct}%" if pct is not None else "…")
+    status = DONE if done else stage + (f"  {pct}%" if pct is not None else "…")
     d.text((84, y + 41), status, font=FM, fill=GREEN if done else MUTED, anchor="lm")
     if pct is not None and not done:
         d.rounded_rectangle((330, y + 36, 500, y + 46), radius=5, fill=(60, 60, 66))
@@ -105,6 +106,8 @@ def answer(d: ImageDraw.ImageDraw, y: int, n_lines: int) -> None:
         elif kind == "t":
             d.text((52, y), "•", font=F, fill=MUTED)
             d.text((70, y), row[1], font=FB, fill=ACCENT)
+            d.text((120, y), row[2], font=F, fill=TEXT)
+        elif kind == "c":  # continuation of the previous bullet
             d.text((120, y), row[2], font=F, fill=TEXT)
         elif kind == "m":
             d.text((44, y), row[1], font=FS, fill=MUTED)
@@ -147,7 +150,7 @@ def render(out: Path) -> Path:
         y = user_bubble(d, PROMPT, cursor=False)
         y = tool_chip(d, y, "", None, done=True, spin=0)
         answer(d, y, n)
-        add(im, 650 if n and ANSWER[n - 1][0] == "t" else 300)
+        add(im, 650 if n and ANSWER[n - 1][0] in ("t", "c") else 300)
     durations[-1] = 4500  # hold the final frame
 
     pal = frames[-1].quantize(colors=96, method=Image.Quantize.MEDIANCUT)
