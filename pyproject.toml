@@ -25,7 +25,7 @@ whisperx = ["whisperx>=3.1"]
 api = ["openai>=1.30"]
 mcp = ["mcp>=1.2"]
 all = ["faster-whisper>=1.0", "numpy", "mcp>=1.2"]
-dev = ["pytest>=7", "ruff"]
+dev = ["pytest>=7", "ruff", "numpy"]
 
 [project.scripts]
 wordcut = "wordcut.cli:main"
