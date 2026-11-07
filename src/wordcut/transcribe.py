@@ -11,6 +11,7 @@ Backends (all optional installs, imported lazily):
 
 from __future__ import annotations
 
+import math
 import os
 import tempfile
 from collections.abc import Callable
@@ -74,6 +75,10 @@ def transcribe(
         wav = Path(tmp) / "audio.wav"
         say("extracting audio…")
         extract_audio(path, wav)
+        peak = _peak_level(wav)
+        if peak is not None and peak < SILENT_PEAK:
+            say(f"warning: the audio is silent (peak {20 * math.log10(max(peak, 1e-9)):.0f} dBFS). "
+                "Check that the right microphone was selected and not muted.")
         if backend == "faster-whisper":
             tr = _faster_whisper(wav, model or "small", language, device, prompt, say)
         elif backend == "whisperx":
@@ -120,6 +125,17 @@ def load_wav_array(wav: str | Path):
     if channels > 1:
         audio = audio.reshape(-1, channels).mean(axis=1)
     return audio
+
+
+SILENT_PEAK = 10 ** (-60 / 20)  # below -60 dBFS there is nothing a model could hear
+
+
+def _peak_level(wav: str | Path) -> float | None:
+    try:
+        audio = load_wav_array(wav)
+    except Exception:  # numpy missing (API backend) or odd file: skip the check
+        return None
+    return float(abs(audio).max()) if len(audio) else 0.0
 
 
 _GPU_ERROR_HINTS = ("cuda", "cudnn", "cublas", "out of memory", "no kernel image", "libcu")

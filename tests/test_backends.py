@@ -111,3 +111,20 @@ def test_openai_response_conversion():
     assert t.language == "en"
     assert [len(s.words) for s in t.segments] == [2, 1]
     assert t.segments[0].text == "Hello there."
+
+
+def test_warns_when_audio_is_silent(fake_faster_whisper, tmp_path):
+    import subprocess
+
+    silent = tmp_path / "silent.m4a"
+    subprocess.run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo",
+                    "-t", "3", "-c:a", "aac", str(silent)], check=True)
+    messages = []
+    transcribe(silent, progress=messages.append)
+    assert any("audio is silent" in m for m in messages)
+
+
+def test_no_silence_warning_for_real_audio(fake_faster_whisper, audio_file):
+    messages = []
+    transcribe(audio_file, progress=messages.append)
+    assert not any("silent" in m for m in messages)
