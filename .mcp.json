@@ -2,7 +2,7 @@
   "mcpServers": {
     "mediasense": {
       "command": "uvx",
-      "args": ["--from", "mediasense[all,ffmpeg]", "mediasense", "mcp"]
+      "args": ["mediasense==0.5.0", "mcp"]
     }
   }
 }

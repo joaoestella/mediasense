@@ -251,7 +251,7 @@ one-click Claude Desktop extension (`.mcpb`), and a GUI.
 ## Releasing
 
 1. Bump `version` in `pyproject.toml`, `src/mediasense/__init__.py`, `server.json` (both places) and
-   `.claude-plugin/plugin.json`, commit. The workflow refuses a tag that doesn't match them.
+   `.claude-plugin/plugin.json`, and the pinned `mediasense==X.Y.Z` in `.mcp.json`, commit. The workflow refuses a tag that doesn't match them.
 2. `git tag vX.Y.Z && git push origin vX.Y.Z`. The Release workflow publishes to PyPI, updates the entry
    in the [MCP Registry](https://registry.modelcontextprotocol.io/) and creates a GitHub release with the
    wheel, `mediasense-skill.zip` and `mediasense.mcpb`.

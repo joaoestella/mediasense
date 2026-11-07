@@ -30,6 +30,7 @@ jobs:
           for f in server.json .claude-plugin/plugin.json; do
             test "$(jq -r .version $f)" = "$V" || { echo "$f version != $V"; exit 1; }
           done
+          grep -q "\"mediasense==$V\"" .mcp.json || { echo ".mcp.json must run mediasense==$V"; exit 1; }
           echo "VERSION=$V" >> "$GITHUB_ENV"
 
       - name: Build the Python package
