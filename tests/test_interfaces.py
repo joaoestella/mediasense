@@ -4,10 +4,10 @@ import json
 
 import pytest
 
-from wordcut.cli import main
-from wordcut.media import probe
-from wordcut.models import Transcript
-from wordcut.video import pick_times, storyboard
+from mediasense.cli import main
+from mediasense.media import probe
+from mediasense.models import Transcript
+from mediasense.video import pick_times, storyboard
 
 
 def test_pick_times():
@@ -93,7 +93,7 @@ mcp = pytest.importorskip("mcp")
 
 
 def test_mcp_tools(video_file, transcript_file, tmp_path):
-    from wordcut import mcp_server as s
+    from mediasense import mcp_server as s
 
     assert "então" in s.read_transcript(str(video_file))
     assert "03.050" in s.search_transcript(str(video_file), "então")
@@ -110,7 +110,7 @@ def test_mcp_tools(video_file, transcript_file, tmp_path):
 def test_mcp_tool_listing():
     import asyncio
 
-    from wordcut.mcp_server import mcp as server
+    from mediasense.mcp_server import mcp as server
 
     tools = asyncio.run(server.list_tools())
     names = {t.name for t in tools}

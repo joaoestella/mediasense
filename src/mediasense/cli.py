@@ -1,4 +1,4 @@
-"""wordcut command-line interface."""
+"""mediasense command-line interface."""
 
 from __future__ import annotations
 
@@ -17,7 +17,20 @@ def _p(*a, **k):
 
 
 # ------------------------------------------------------------ commands
+def _media(value: str) -> str:
+    """CLI arguments may be a link; download it (once) and use the local copy."""
+    from .fetch import is_url, resolve
+
+    if is_url(value):
+        _p("downloading…")
+        path = str(resolve(value))
+        _p(f"saved to {path}")
+        return path
+    return value
+
+
 def cmd_info(args) -> int:
+    args.file = _media(args.file)
     info = probe(args.file)
     print(json.dumps(info.to_dict(), indent=2))
     return 0
@@ -26,9 +39,10 @@ def cmd_info(args) -> int:
 def cmd_transcribe(args) -> int:
     from .transcribe import transcribe
 
+    args.file = _media(args.file)
     tr = transcribe(args.file, backend=args.backend, model=args.model, language=args.language,
                     device=args.device, verbatim=args.verbatim, diarize=args.diarize,
-                    hf_token=args.hf_token, progress=None if args.quiet else _p)
+                    hf_token=args.hf_token, progress=None if args.quiet else _p, vocabulary=args.vocab)
     out = Path(args.output) if args.output else api.default_transcript_path(args.file)
     tr.save(out)
     _p(f"language: {tr.language} · {len(tr.words())} words · {fmt_time(tr.duration or 0)}")
@@ -63,13 +77,14 @@ def cmd_search(args) -> int:
 
 
 def cmd_edit(args) -> int:
+    args.file = _media(args.file)
     tr = api.load_transcript_for(args.file, args.transcript)
     needs_tr = bool(
         args.cut or args.cut_between or args.fillers or args.filler_word
         or (args.silence_source == "transcript" and args.silences is not None)
     )
     if needs_tr and tr is None:
-        _p(f"error: no transcript found. Run: wordcut transcribe {args.file}")
+        _p(f"error: no transcript found. Run: mediasense transcribe {args.file}")
         return 2
     plan, info, report = api.plan_edit(
         args.file, tr,
@@ -130,6 +145,7 @@ def cmd_place(args) -> int:
 def cmd_storyboard(args) -> int:
     from .video import storyboard
 
+    args.file = _media(args.file)
     tr = api.load_transcript_for(args.file, args.transcript)
     out = args.output or str(Path(args.file).with_name(Path(args.file).stem + ".storyboard"))
     data = storyboard(args.file, out, tr, threshold=args.threshold, max_frames=args.max_frames,
@@ -137,6 +153,22 @@ def cmd_storyboard(args) -> int:
     _p(f"{len(data['shots'])} shots, {len(data['contact_sheets'])} contact sheet(s)"
        + ("" if tr else " — no transcript found, speech column empty"))
     print(Path(out) / "storyboard.md")
+    return 0
+
+
+def cmd_understand(args) -> int:
+    data = api.understand(args.source, language=args.language, model=args.model, vocabulary=args.vocab,
+                          max_frames=args.max_frames, force=args.force, progress=_p)
+    print(api.understand_report(data, max_chars=10**9))
+    if data.get("storyboard_dir"):
+        _p(f"\nkey frames: {data['storyboard_dir']}")
+    return 0
+
+
+def cmd_fetch(args) -> int:
+    from .fetch import fetch
+
+    print(fetch(args.url, dest=args.output, audio_only=args.audio))
     return 0
 
 
@@ -150,18 +182,33 @@ def cmd_mcp(args) -> int:
 # ------------------------------------------------------------ parser
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(
-        prog="wordcut",
+        prog="mediasense",
         description="Transcribe audio/video with word-level timestamps, then edit by text.",
     )
-    p.add_argument("--version", action="version", version=f"wordcut {__version__}")
+    p.add_argument("--version", action="version", version=f"mediasense {__version__}")
     sub = p.add_subparsers(dest="cmd", required=True)
+
+    s = sub.add_parser("understand", help="transcript + key frames + metadata of a file or link, in one go")
+    s.add_argument("source", help="file path or link (TikTok, YouTube, Instagram, X…)")
+    s.add_argument("-l", "--language")
+    s.add_argument("-m", "--model", default="small")
+    s.add_argument("--vocab", metavar="WORDS", help='names/jargon to spell right, e.g. "Cloudflare, Claude"')
+    s.add_argument("--max-frames", type=int, default=24)
+    s.add_argument("--force", action="store_true", help="redo transcript and storyboard")
+    s.set_defaults(func=cmd_understand)
+
+    s = sub.add_parser("fetch", help="download a video/audio from a link (TikTok, YouTube…)")
+    s.add_argument("url")
+    s.add_argument("-o", "--output", help="folder (default: ~/Downloads/mediasense)")
+    s.add_argument("--audio", action="store_true", help="audio only")
+    s.set_defaults(func=cmd_fetch)
 
     s = sub.add_parser("info", help="show media properties")
     s.add_argument("file")
     s.set_defaults(func=cmd_info)
 
     s = sub.add_parser("transcribe", help="speech -> text with a timestamp for every word")
-    s.add_argument("file")
+    s.add_argument("file", help="file path or link")
     s.add_argument("-o", "--output", help="transcript JSON (default: <file>.transcript.json)")
     s.add_argument("-b", "--backend", default="faster-whisper", choices=["faster-whisper", "whisperx", "openai"])
     s.add_argument("-m", "--model", help="model size/name: tiny, base, small, medium, large-v3, turbo …")
@@ -170,6 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("--verbatim", action="store_true", help="keep hesitations (um, é…, hum) so they can be cut")
     s.add_argument("--diarize", action="store_true", help="label speakers (whisperx + HF token)")
     s.add_argument("--hf-token", help="Hugging Face token for diarization (or HF_TOKEN env)")
+    s.add_argument("--vocab", metavar="WORDS", help='names/jargon to spell right, e.g. "Cloudflare, Claude"')
     s.add_argument("--also", nargs="*", metavar="EXT", help="also write e.g. srt vtt txt csv")
     s.add_argument("-q", "--quiet", action="store_true")
     s.set_defaults(func=cmd_transcribe)
@@ -241,10 +289,10 @@ def build_parser() -> argparse.ArgumentParser:
     s.add_argument("file")
     s.add_argument("-t", "--transcript")
     s.add_argument("-o", "--output", help="output folder (default: <file>.storyboard/)")
-    s.add_argument("--threshold", type=float, default=0.3, help="scene-change sensitivity 0–1 (lower = more)")
+    s.add_argument("--threshold", type=float, help="scene-change sensitivity 0–1, lower = more (auto)")
     s.add_argument("--max-frames", type=int, default=40)
     s.add_argument("--min-gap", type=float, default=1.5)
-    s.add_argument("--max-gap", type=float, default=20.0, help="add a frame at least this often")
+    s.add_argument("--max-gap", type=float, help="add a frame at least this often, seconds (auto)")
     s.add_argument("--width", type=int, default=768)
     s.set_defaults(func=cmd_storyboard)
 

@@ -1,5 +1,5 @@
-from wordcut.edit import Cut, EditPlan, PlanBuilder, find_phrase, is_filler, map_time, normalize, remap_transcript
-from wordcut.models import Segment, Transcript, Word, fill_missing_word_times, fmt_time, join_words, parse_time
+from mediasense.edit import Cut, EditPlan, PlanBuilder, find_phrase, is_filler, map_time, normalize, remap_transcript
+from mediasense.models import Segment, Transcript, Word, fill_missing_word_times, fmt_time, join_words, parse_time
 
 
 # ---------------------------------------------------------------- models

@@ -30,7 +30,7 @@ def load_transcript_for(media: str | Path | None, transcript: str | Path | None 
         raise FileNotFoundError(f"transcript not found: {transcript}")
     if required:
         raise FileNotFoundError(
-            f"no transcript for {media}; run `wordcut transcribe {media}` first"
+            f"no transcript for {media}; run `mediasense transcribe {media}` first"
         )
     return None
 
@@ -107,7 +107,7 @@ def apply_plan(
         export.write(edl, export.to_edl(keep, info, title=Path(media).stem))
         written["edl"] = str(edl)
     if fcpxml:
-        export.write(fcpxml, export.to_fcpxml(keep, info, project=Path(media).stem + " (wordcut)"))
+        export.write(fcpxml, export.to_fcpxml(keep, info, project=Path(media).stem + " (mediasense)"))
         written["fcpxml"] = str(fcpxml)
     if transcript and (subtitles or transcript_out):
         edited = remap_transcript(transcript, plan)
@@ -182,3 +182,90 @@ def transcript_excerpt(t: Transcript, start: float | None = None, end: float | N
 
 def split_ranges(values: Sequence[str]) -> list[Range]:
     return [parse_range(v) for v in values]
+
+
+def understand(
+    source: str,
+    language: str | None = None,
+    model: str = "small",
+    vocabulary: list[str] | str | None = None,
+    max_frames: int = 24,
+    backend: str = "faster-whisper",
+    force: bool = False,
+    progress=None,
+) -> dict:
+    """Everything a model needs to understand a file or link, in one call:
+    metadata, transcript with timestamps and (for video) a storyboard of shots.
+
+    Reuses the transcript/storyboard already on disk unless ``force``.
+    """
+    from .fetch import read_info, resolve
+    from .transcribe import transcribe
+
+    say = progress or (lambda _m: None)
+    src = resolve(source)
+    info = probe(src)
+    meta = read_info(src)
+    result: dict = {"path": str(src), "info": info.to_dict(), "metadata": meta}
+
+    transcript = None
+    tpath = default_transcript_path(src)
+    if info.has_audio:
+        if tpath.exists() and not force:
+            transcript = Transcript.load(tpath)
+        else:
+            transcript = transcribe(src, backend=backend, model=model, language=language,
+                                    vocabulary=vocabulary, progress=say)
+            transcript.save(tpath)
+        result["transcript_path"] = str(tpath)
+    result["transcript"] = transcript
+
+    if info.has_video:
+        from .video import storyboard
+
+        out = Path(src).with_name(Path(src).stem + ".storyboard")
+        sb_json = out / "storyboard.json"
+        cached = None
+        if sb_json.exists() and not force:
+            import json
+
+            cached = json.loads(sb_json.read_text(encoding="utf-8"))
+            # a storyboard made before the transcript existed has no speech: rebuild it
+            if transcript is not None and not any(s.get("speech") for s in cached.get("shots", [])):
+                cached = None
+        if cached:
+            result["storyboard"] = cached
+        else:
+            say("picking key frames…")
+            result["storyboard"] = storyboard(src, out, transcript, max_frames=max_frames)
+        result["storyboard_dir"] = str(out)
+    return result
+
+
+def understand_report(result: dict, max_chars: int = 15000) -> str:
+    """Model-friendly text version of :func:`understand`."""
+    from .models import fmt_time
+
+    info = result["info"]
+    lines = [f"file: {result['path']}"]
+    kind = "video" if info["has_video"] else "audio"
+    extra = f" · {info['width']}x{info['height']}" if info["has_video"] else ""
+    lines.append(f"{kind} · {fmt_time(info['duration'])}{extra}")
+    meta = result.get("metadata") or {}
+    for key in ("title", "uploader", "webpage_url", "upload_date"):
+        if meta.get(key):
+            lines.append(f"{key}: {meta[key]}")
+    if meta.get("description"):
+        lines.append(f"description: {str(meta['description'])[:600]}")
+    t: Transcript | None = result.get("transcript")
+    if t is not None:
+        lines += ["", f"## Transcript (language: {t.language}, {len(t.words())} words)",
+                  transcript_excerpt(t, max_chars=max_chars)]
+    elif not info["has_audio"]:
+        lines += ["", "(no audio track)"]
+    sb = result.get("storyboard")
+    if sb:
+        lines += ["", f"## Shots ({len(sb['shots'])}; contact sheets show #number and start time)"]
+        for s in sb["shots"]:
+            lines.append(f"#{s['index']} {s['start_tc']}–{s['end_tc']}: {s['speech'] or '—'}")
+    return "\n".join(lines)

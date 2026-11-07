@@ -45,7 +45,7 @@ class TranscriptionError(RuntimeError):
 
 def _missing(pkg: str, extra: str) -> TranscriptionError:
     return TranscriptionError(
-        f"backend needs '{pkg}'. Install with:  pip install \"wordcut[{extra}]\""
+        f"backend needs '{pkg}'. Install with:  pip install \"mediasense[{extra}]\""
     )
 
 
@@ -59,8 +59,13 @@ def transcribe(
     diarize: bool = False,
     hf_token: str | None = None,
     progress: Callable[[str], None] | None = None,
+    vocabulary: list[str] | str | None = None,
 ) -> Transcript:
-    """Transcribe an audio or video file. ``language=None`` auto-detects."""
+    """Transcribe an audio or video file. ``language=None`` auto-detects.
+
+    ``vocabulary``: names and terms the speaker uses ("Cloudflare, Claude, Next.js").
+    They bias the model towards the right spelling of brands and jargon.
+    """
     if backend not in BACKENDS:
         raise TranscriptionError(f"unknown backend '{backend}', choose one of {BACKENDS}")
     info = probe(path)
@@ -70,6 +75,10 @@ def transcribe(
     prompt = VERBATIM_PROMPTS.get((language or "")[:2]) if verbatim else None
     if verbatim and prompt is None:
         prompt = VERBATIM_PROMPTS["en"]
+    hotwords = _vocab(vocabulary)
+    if hotwords:
+        # a short "glossary" in the prompt helps every backend; faster-whisper also gets hotwords
+        prompt = f"{prompt} {hotwords}." if prompt else f"{hotwords}."
 
     with tempfile.TemporaryDirectory() as tmp:
         wav = Path(tmp) / "audio.wav"
@@ -80,9 +89,9 @@ def transcribe(
             say(f"warning: the audio is silent (peak {20 * math.log10(max(peak, 1e-9)):.0f} dBFS). "
                 "Check that the right microphone was selected and not muted.")
         if backend == "faster-whisper":
-            tr = _faster_whisper(wav, model or "small", language, device, prompt, say)
+            tr = _faster_whisper(wav, model or "small", language, device, prompt, say, hotwords)
         elif backend == "whisperx":
-            tr = _whisperx(wav, model or "small", language, device, prompt, diarize, hf_token, say)
+            tr = _whisperx(wav, model or "small", language, device, prompt, diarize, hf_token, say, hotwords)
         else:
             tr = _openai(wav, model, language, prompt, say)
 
@@ -174,7 +183,15 @@ def _peak_level(wav: str | Path) -> float | None:
 _GPU_ERROR_HINTS = ("cuda", "cudnn", "cublas", "out of memory", "no kernel image", "libcu")
 
 
-def _faster_whisper(wav, model_name, language, device, prompt, say) -> Transcript:
+def _vocab(vocabulary) -> str | None:
+    if not vocabulary:
+        return None
+    items = vocabulary.split(",") if isinstance(vocabulary, str) else list(vocabulary)
+    items = [i.strip() for i in items if i and i.strip()]
+    return ", ".join(dict.fromkeys(items)) or None
+
+
+def _faster_whisper(wav, model_name, language, device, prompt, say, hotwords=None) -> Transcript:
     try:
         from faster_whisper import WhisperModel  # type: ignore
     except ImportError as e:
@@ -182,26 +199,28 @@ def _faster_whisper(wav, model_name, language, device, prompt, say) -> Transcrip
     audio = load_wav_array(wav)
     dev, compute = _resolve_device(device)
     try:
-        return _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say)
+        return _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say, hotwords)
     except Exception as e:  # GPU present but CUDA/cuDNN libraries missing or broken
         if device != "auto" or dev != "cuda" or not any(h in str(e).lower() for h in _GPU_ERROR_HINTS):
             raise
         say(f"GPU failed ({str(e).splitlines()[0][:120]}); retrying on CPU…")
-        return _faster_whisper_run(WhisperModel, audio, model_name, "cpu", "int8", language, prompt, say)
+        return _faster_whisper_run(WhisperModel, audio, model_name, "cpu", "int8", language, prompt, say, hotwords)
 
 
-def _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say) -> Transcript:
+def _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say,
+                        hotwords=None) -> Transcript:
     say(f"loading model '{model_name}' on {dev} (first run downloads it)…")
     m = WhisperModel(model_name, device=dev, compute_type=compute)
     say("transcribing…")
-    segs_iter, info = m.transcribe(
-        audio,
-        language=language,
-        word_timestamps=True,
-        vad_filter=True,
-        initial_prompt=prompt,
-        condition_on_previous_text=False,
-    )
+    kwargs = dict(language=language, word_timestamps=True, vad_filter=True,
+                  initial_prompt=prompt, condition_on_previous_text=False)
+    if hotwords:
+        kwargs["hotwords"] = hotwords
+    try:
+        segs_iter, info = m.transcribe(audio, **kwargs)
+    except TypeError:  # faster-whisper < 1.0.2 has no ``hotwords``; the prompt still carries them
+        kwargs.pop("hotwords", None)
+        segs_iter, info = m.transcribe(audio, **kwargs)
     segments: list[Segment] = []
     for s in segs_iter:
         words = [
@@ -218,7 +237,7 @@ def _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language,
     return Transcript(segments=segments, language=getattr(info, "language", language), model=model_name)
 
 
-def _whisperx(wav, model_name, language, device, prompt, diarize, hf_token, say) -> Transcript:
+def _whisperx(wav, model_name, language, device, prompt, diarize, hf_token, say, hotwords=None) -> Transcript:
     try:
         import whisperx  # type: ignore
     except ImportError as e:
@@ -232,7 +251,7 @@ def _whisperx(wav, model_name, language, device, prompt, diarize, hf_token, say)
             device = "cpu"
     compute = "float16" if device == "cuda" else "int8"
     say(f"loading WhisperX '{model_name}' on {device}…")
-    asr_options = {"initial_prompt": prompt} if prompt else None
+    asr_options = {k: v for k, v in (("initial_prompt", prompt), ("hotwords", hotwords)) if v} or None
     kwargs = {"compute_type": compute, "language": language}
     if asr_options:
         kwargs["asr_options"] = asr_options
@@ -287,7 +306,7 @@ def _openai(wav, model_name, language, prompt, say) -> Transcript:
     except ImportError as e:
         raise _missing("openai", "api") from e
     client = OpenAI()  # honours OPENAI_API_KEY and OPENAI_BASE_URL (Groq etc.)
-    model_name = model_name or os.environ.get("WORDCUT_API_MODEL", "whisper-1")
+    model_name = model_name or os.environ.get("MEDIASENSE_API_MODEL", "whisper-1")
     size_mb = os.path.getsize(wav) / 1e6
     if size_mb > 24:
         raise TranscriptionError(

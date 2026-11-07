@@ -153,7 +153,7 @@ def _tc(frames: int, base: int) -> str:
 
 
 # ------------------------------------------------------------- EDL
-def to_edl(keep: Sequence[Range], info: MediaInfo, title: str = "wordcut edit", reel: str = "AX") -> str:
+def to_edl(keep: Sequence[Range], info: MediaInfo, title: str = "mediasense edit", reel: str = "AX") -> str:
     """CMX3600 EDL (non-drop-frame). Import in Premiere, Resolve, Avid…
 
     The editor will ask you to relink the clip; point it at the source file.
@@ -196,7 +196,7 @@ def _rt(frames: int, fps: Fraction) -> str:
 def to_fcpxml(
     keep: Sequence[Range],
     info: MediaInfo,
-    project: str = "wordcut edit",
+    project: str = "mediasense edit",
     markers: Sequence[tuple[float, str]] = (),
 ) -> str:
     """FCPXML 1.9 with one asset-clip per kept range (Final Cut Pro, DaVinci Resolve).
@@ -245,7 +245,7 @@ def to_fcpxml(
     </asset>
   </resources>
   <library>
-    <event name="wordcut">
+    <event name="mediasense">
       <project name={quoteattr(project)}>
         <sequence format="r1" duration="{_rt(offset, fps)}" tcStart="0s" tcFormat="NDF" audioLayout="stereo" audioRate="48k">
           <spine>

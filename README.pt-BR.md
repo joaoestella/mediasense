@@ -1,73 +1,77 @@
-# wordcut
+# mediasense
 
-**Dá ouvidos e olhos para assistentes de IA trabalharem com seus áudios e vídeos.** O wordcut transcreve
-em cerca de 99 idiomas com o tempo de cada palavra e permite **editar pelo texto**: cortar frases, vícios
-de linguagem e pausas longas. Ele também exporta legendas e timelines para o seu editor de vídeo, encaixa
-áudios no momento certo de um vídeo e gera storyboards para a IA **assistir ao vídeo** e explicar o que
-acontece.
-
-Tudo roda no seu computador. Dá para usar pelo terminal ou conectar ao Claude (ou a qualquer cliente
-[MCP](https://modelcontextprotocol.io)) e pedir em português mesmo.
+**Dá ouvidos e olhos para o Claude.** Cole um link do TikTok, YouTube ou Instagram, ou aponte um arquivo,
+no Claude Code ou no Claude Desktop e peça em português mesmo. O Claude consegue resumir o vídeo,
+explicar o que acontece nele, achar o momento em que algo é dito ou editar.
 
 ```text
-"Tira todos os 'é...' e encurta as pausas"     → aula.edited.mp4 + aula.edited.srt
-"Em que momento ela fala do orçamento?"        → 03:41.200 → 03:42.050  "do orçamento"
-"Corta de 'isso fica entre nós' até 'enfim'"   → mostra o plano, confirma e renderiza
-"O que acontece nesse vídeo?"                  → resumo cena a cena com horários
-"Coloca a vinheta.mp3 aos 0:12, abaixando o som original" → aula.placed.mp4
+você: resume esse vídeo https://www.tiktok.com/@alguem/video/7350…
+você: o que ele mostra aos 0:30? que ferramenta é essa?
+você: limpa ~/Desktop/podcast.m4a, tira os "é..." e as pausas longas
+você: faz legenda curta para ~/Videos/reel.mp4
 ```
 
-## Instalação
+O mediasense roda **no seu computador**: baixa o link, transcreve a fala em cerca de 99 idiomas com o
+tempo de cada palavra, separa quadros nas mudanças de cena e entrega ao Claude a transcrição, a lista de
+cenas e as imagens. Nada é enviado para fora.
 
-Requisitos: Python 3.10+ e [FFmpeg](https://ffmpeg.org/download.html)
-(`brew install ffmpeg` · `winget install ffmpeg` · `sudo apt install ffmpeg`).
+## Instalação (5 minutos)
 
-```bash
-pipx install "wordcut[all] @ git+https://github.com/OWNER/wordcut"
-```
+1. **FFmpeg**: `winget install ffmpeg` (Windows) · `brew install ffmpeg` (macOS) · `sudo apt install ffmpeg`.
+2. **mediasense**:
 
-A primeira transcrição baixa o modelo (cerca de 500 MB para o `small`, que é o padrão).
+   ```bash
+   pipx install "mediasense[all] @ git+https://github.com/joaoestella/mediasense"
+   ```
 
-## Usar com o Claude
+   Se não tiver o pipx: `python -m pip install --user pipx`, depois `python -m pipx ensurepath` e reabra o terminal.
+3. **Conectar ao Claude**
 
-**Claude Code:** `claude mcp add wordcut -- wordcut mcp`
+   *Claude Code*: `claude mcp add mediasense -- mediasense mcp`
 
-**Claude Desktop:** em Configurações → Desenvolvedor → Editar configuração, adicione:
+   *Claude Desktop*: em Configurações → Desenvolvedor → Editar configuração, adicione o bloco abaixo e
+   reinicie o Claude.
 
-```json
-{ "mcpServers": { "wordcut": { "command": "wordcut", "args": ["mcp"] } } }
-```
+   ```json
+   { "mcpServers": { "mediasense": { "command": "mediasense", "args": ["mcp"] } } }
+   ```
 
-Se o Claude não encontrar o comando, use o caminho completo que aparece em `which wordcut` (macOS/Linux)
-ou `where wordcut` (Windows). Reinicie o Claude e peça, por exemplo: *"transcreve ~/Desktop/reuniao.m4a e
-me diz quando falaram de prazo"*.
+   Se o Claude não conseguir iniciar, troque `"mediasense"` pelo caminho completo que aparece em
+   `where mediasense` (Windows) ou `which mediasense` (macOS/Linux).
 
-**Skill (opcional):** copie a pasta `skill/wordcut/` para a sua pasta de skills (no Claude Code:
-`~/.claude/skills/`). Ela ensina o Claude a transcrever uma vez, mostrar os cortes antes, confirmar com
-você e só então renderizar.
+> **Importante:** no Claude Desktop, arquivos anexados no chat vão para o modelo, e não para o seu
+> computador. Mande um **link ou o caminho do arquivo**. No Claude Code, dá para arrastar o arquivo
+> para o terminal.
+
+### Atalhos
+
+No Claude Code, aparecem como `/mcp__mediasense__summarize` e assim por diante:
+
+- `summarize`: resumo com pontos-chave e horários.
+- `explain_video`: explicação cena a cena.
+- `clean_up`: tira vícios e pausas, mostrando o plano antes.
+- `subtitles`: gera legendas.
 
 ## Linha de comando
 
 ```bash
-wordcut transcribe aula.mp4                        # -> aula.transcript.json
-wordcut transcribe aula.mp4 --verbatim --also srt  # mantém os "é..." para poder cortar
-wordcut search aula.transcript.json "prova final"
-wordcut edit aula.mp4 --fillers --silences 0.7 -n  # só mostra o que seria cortado
-wordcut edit aula.mp4 --fillers --silences 0.7 --srt --edl
-wordcut edit aula.mp4 --cut-between "deixa eu ver" "então" --filler-word tipo
-wordcut export aula.transcript.json legenda.srt --words-per-cue 2
-wordcut place video.mp4 narracao.wav --at 0:12.5 --mode duck
-wordcut storyboard aula.mp4
+mediasense understand "https://youtu.be/…"
+mediasense transcribe aula.mp4 -l pt --vocab "Cloudflare, Claude" --also srt
+mediasense edit aula.mp4 --fillers --silences 0.7 -n   # só mostra o plano
+mediasense edit aula.mp4 --fillers --silences 0.7 --srt --edl
+mediasense export aula.transcript.json legenda.srt --words-per-cue 2
+mediasense place video.mp4 narracao.wav --at 0:12.5 --mode duck
 ```
 
-O arquivo original nunca é alterado: tudo sai como `<nome>.edited.*` ou `<nome>.placed.*`.
+O original nunca é alterado: o resultado sai como `<nome>.edited.*` ou `<nome>.placed.*`.
 
 ## Bom saber
 
-- O Whisper "limpa" a fala e costuma omitir hesitações. Use `--verbatim` quando quiser cortar vícios.
-  Palavras ambíguas como "tipo" e "né" só são removidas se você pedir com `--filler-word`.
-- O tempo das palavras é aproximado (0,1 a 0,2 s). Para cortes mais precisos e identificação de quem está
-  falando, use `--backend whisperx`.
-- O EDL abre no Premiere, DaVinci e Avid; o FCPXML abre no Final Cut e no DaVinci.
+- **Nomes próprios:** o Whisper pode escrever "Cloud Fair" no lugar de Cloudflare. Use `--vocab`. Pelo
+  Claude, isso é feito automaticamente quando ele consegue deduzir os nomes do título ou da tela.
+- **Vícios de fala:** use `--verbatim` para mantê-los na transcrição e poder cortar. Palavras reais são
+  protegidas por idioma: "um" é artigo em português e nunca é cortado.
+- **Velocidade:** com placa NVIDIA e as bibliotecas CUDA instaladas, usa a GPU; senão, vai pela CPU.
+- **Downloads:** baixar de links segue os termos de cada site. Use só para conteúdo que você pode baixar.
 
 Documentação completa em inglês: [README.md](README.md).

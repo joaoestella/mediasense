@@ -1,6 +1,6 @@
-"""MCP server: exposes wordcut to Claude Desktop, Claude Code and any MCP client.
+"""MCP server: exposes mediasense to Claude Desktop, Claude Code and any MCP client.
 
-Run with ``wordcut mcp`` (stdio). All processing is local.
+Run with ``mediasense mcp`` (stdio). All processing is local.
 """
 
 from __future__ import annotations
@@ -21,28 +21,27 @@ except ImportError:  # SDK 1.x
 
 from . import api
 from .edit import find_phrase
+from .fetch import fetch, is_url
 from .media import extract_frame, probe
 from .media import place_audio as _place_audio
 from .models import Transcript, fmt_time, parse_time
 
 INSTRUCTIONS = """\
-wordcut turns speech into text with a timestamp for every word, and edits audio/video by text.
+mediasense gives you ears and eyes for audio and video on the user's machine: transcripts with a timestamp
+for every word, key frames of videos, and editing by text. Every `path`/`source` argument also accepts a
+link (TikTok, YouTube, Instagram, X, Vimeo…); it is downloaded once and reused.
 
-Typical flow:
-1. transcribe(path) once per file. It writes <file>.transcript.json next to the media; later tools find it
-   automatically when you pass the media path.
-2. read_transcript / search_transcript to locate what the user is talking about.
-3. plan_edit(...) to preview cuts. Show the user the cut list and confirm before render_edit(...).
-   render_edit never overwrites the source; it writes <file>.edited.<ext> (plus optional EDL/FCPXML/SRT).
-4. watch_video(path) to understand a video: it returns contact sheets of key frames with timestamps plus
-   what is said in each shot. Use get_frame(path, time) to look closer at one moment.
-5. place_audio(...) to drop a sound/voice clip into a video at a given time (mix, duck or replace).
-
-Paths are on the user's machine; prefer absolute paths. Times accept seconds (75.5) or 1:15.5.
-Whisper often drops hesitations; transcribe with verbatim=true when the user wants fillers removed.
+- To summarize / explain / answer questions about a file or link: call understand(source). It returns the
+  transcript, shot list and contact sheets (key frames labelled with shot number and time) in one go.
+- To edit: transcribe (verbatim=true if removing fillers) → plan_edit → show the user the cut list and get
+  an OK → render_edit. Outputs are new files (<name>.edited.<ext>); the original is never touched.
+- To place a clip: find the moment with search_transcript / understand, then place_audio.
+- Pass `vocabulary` with brand names and jargon you can infer (title, screen text, the user's words) so
+  they are spelled correctly. Fix remaining obvious mis-hearings when you report back.
+- Times accept seconds (75.5) or m:ss (1:15.5). Quote times to the user as m:ss.
 """
 
-_server = _Server("wordcut", instructions=INSTRUCTIONS)
+_server = _Server("mediasense", instructions=INSTRUCTIONS)
 
 
 class _Tools:
@@ -74,7 +73,10 @@ mcp = _Tools()
 
 
 def _path(p: str) -> str:
-    return str(Path(os.path.expanduser(p)).resolve())
+    """Local path, or a link (TikTok, YouTube, Instagram…) downloaded on first use."""
+    if is_url(p):
+        return str(fetch(p))
+    return str(Path(os.path.expanduser(p.strip().strip('"'))).resolve())
 
 
 def _transcript(path: str) -> Transcript:
@@ -101,8 +103,12 @@ def transcribe(
     verbatim: bool = False,
     diarize: bool = False,
     force: bool = False,
+    vocabulary: list[str] | None = None,
 ) -> str:
-    """Transcribe audio/video with word-level timestamps (auto-detects language if not given).
+    """Transcribe audio/video (file path or link) with word-level timestamps; auto-detects language.
+
+    vocabulary: names/jargon likely in the audio (["Cloudflare", "Claude", "Next.js"]) so they are
+    spelled right. Pass them whenever you know them (from the user, the title or the screen).
 
     model: tiny | base | small | medium | large-v3 | turbo (bigger = slower, more accurate).
     backend: faster-whisper (default, local) | whisperx (local, tighter word times, speakers) | openai (API).
@@ -119,7 +125,7 @@ def transcribe(
         note = "(existing transcript reused; pass force=true to redo)"
     else:
         t = _tr(src, backend=backend, model=model, language=language,
-                verbatim=verbatim, diarize=diarize)
+                verbatim=verbatim, diarize=diarize, vocabulary=vocabulary)
         t.save(out)
         note = ""
     head = (f"transcript: {out} {note}\nlanguage: {t.language} · words: {len(t.words())} · "
@@ -316,6 +322,76 @@ def get_frame(path: str, time: str, width: int = 1024):
     dst = out_dir / f"frame_{t:.2f}.jpg"
     extract_frame(src, t, dst, width)
     return [f"frame at {fmt_time(t)}", Image(path=str(dst))]
+
+
+@mcp.tool()
+def understand(
+    source: str,
+    language: str | None = None,
+    vocabulary: list[str] | None = None,
+    model: str = "small",
+    max_frames: int = 24,
+    include_images: bool = True,
+    force: bool = False,
+):
+    """START HERE to summarize, explain or answer questions about an audio/video file or a link
+    (TikTok, YouTube, Instagram, X, Vimeo…). One call: downloads links, transcribes with timestamps
+    (reusing earlier work), and for videos returns key-frame contact sheets + what is said per shot,
+    plus the post's title/description when it came from a link.
+
+    vocabulary: brand names / jargon to spell right. language: ISO code if known (pt, en…).
+    """
+    data = api.understand(source, language=language, model=model, vocabulary=vocabulary,
+                          max_frames=max_frames, force=force)
+    out: list = [api.understand_report(data)]
+    sb = data.get("storyboard")
+    if include_images and sb:
+        for sheet in sb.get("contact_sheets", []):
+            out.append(Image(path=str(Path(data["storyboard_dir"]) / sheet)))
+    return out
+
+
+# ------------------------------------------------------------------ prompts
+# Show up as slash commands, e.g. /mcp__mediasense__summarize in Claude Code.
+@_server.prompt()
+def summarize(source: str) -> str:
+    """Summarize an audio/video file or link (TikTok, YouTube, voice note…)."""
+    return (f"Use the mediasense `understand` tool on: {source}\n"
+            "Then summarize it in my language: a one-line gist, the key points with timestamps (m:ss), "
+            "any steps/instructions as a numbered list, links or names mentioned, and the call to action "
+            "if there is one. Correct obvious transcription mistakes in names using the title, "
+            "description and what is visible on screen.")
+
+
+@_server.prompt()
+def explain_video(source: str, question: str = "") -> str:
+    """Explain what happens in a video, shot by shot (optionally answer a question about it)."""
+    ask = f" Then answer: {question}" if question else ""
+    return (f"Use the mediasense `understand` tool on: {source}\n"
+            "Look at the contact sheets and the speech for each shot, and explain the video chronologically "
+            "with timestamps: what is shown, what is said, and what the creator is trying to achieve "
+            "(structure, hook, persuasion techniques). Use get_frame to read on-screen text you can't make "
+            f"out.{ask}")
+
+
+@_server.prompt()
+def clean_up(source: str) -> str:
+    """Remove filler words and long pauses from a recording (preview first, then render)."""
+    return (f"Clean up this recording with mediasense: {source}\n"
+            "1. transcribe it with verbatim=true (reuse an existing transcript only if it was verbatim).\n"
+            "2. plan_edit with fillers=true and silences=0.7, and show me the cut list in plain words "
+            "(how many fillers, how many pauses, old → new length).\n"
+            "3. Wait for my OK, then render_edit with the same options plus srt=true, and tell me where the "
+            "files are.")
+
+
+@_server.prompt()
+def subtitles(source: str, style: str = "standard") -> str:
+    """Make subtitles for a video ('standard' or 'short' 1–3 word captions for vertical video)."""
+    wpc = "words_per_cue=2" if style.lower().startswith("short") else "the default layout"
+    return (f"Transcribe {source} with mediasense (pass vocabulary for any names you can infer), "
+            f"check the transcript for obvious mistakes, then export_transcript as srt using {wpc}. "
+            "Tell me where the file is.")
 
 
 def main() -> None:

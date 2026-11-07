@@ -16,7 +16,7 @@ import subprocess
 
 import pytest
 
-from wordcut.models import Segment, Transcript, Word
+from mediasense.models import Segment, Transcript, Word
 
 TONE = "0.5*sin(2*PI*440*t)*(lt(t,1)+between(t,2.5,4)+gte(t,4.3))"
 
@@ -74,7 +74,7 @@ def transcript():
 
 @pytest.fixture
 def transcript_file(transcript, video_file):
-    from wordcut.api import default_transcript_path
+    from mediasense.api import default_transcript_path
 
     p = default_transcript_path(video_file)
     transcript.source = str(video_file)

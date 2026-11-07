@@ -54,16 +54,24 @@ def storyboard(
     video: str | Path,
     out_dir: str | Path,
     transcript: Transcript | None = None,
-    threshold: float = 0.3,
+    threshold: float | None = None,
     max_frames: int = 40,
     min_gap: float = 1.5,
-    max_gap: float = 20.0,
+    max_gap: float | None = None,
     width: int = 768,
     contact_sheet: bool = True,
 ) -> dict:
+    """``threshold``/``max_gap`` default to values adapted to the video: vertical
+    short-form (TikTok, Reels, Shorts) gets more sensitive cut detection, and every
+    video gets a frame at least every ~5% of its length (4–20 s)."""
     info = probe(video)
     if not info.has_video:
         raise ValueError("storyboard needs a video file")
+    vertical = bool(info.width and info.height and info.height > info.width)
+    if threshold is None:
+        threshold = 0.22 if vertical else 0.3
+    if max_gap is None:
+        max_gap = min(20.0, max(4.0, info.duration / 20))
     out = Path(out_dir)
     frames_dir = out / "frames"
     frames_dir.mkdir(parents=True, exist_ok=True)
@@ -91,6 +99,7 @@ def storyboard(
         "resolution": f"{info.width}x{info.height}",
         "fps": info.fps,
         "scene_cuts_detected": len(scenes),
+        "vertical": vertical,
         "language": transcript.language if transcript else None,
         "contact_sheets": sheets,
         "shots": [s.to_dict() for s in shots],

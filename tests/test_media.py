@@ -3,9 +3,9 @@ from fractions import Fraction
 
 import pytest
 
-from wordcut import api, export
-from wordcut.edit import PlanBuilder
-from wordcut.media import detect_scenes, detect_silences, place_audio, probe, render_keep
+from mediasense import api, export
+from mediasense.edit import PlanBuilder
+from mediasense.media import detect_scenes, detect_silences, place_audio, probe, render_keep
 
 
 def test_probe(video_file, audio_file):
@@ -135,7 +135,7 @@ def test_default_outputs_never_clobber_source(video_file):
 
 
 def test_render_refuses_to_overwrite_source(audio_file):
-    from wordcut.media import MediaError
+    from mediasense.media import MediaError
 
     with pytest.raises(MediaError, match="overwrite"):
         render_keep(audio_file, [(0, 1)], audio_file)

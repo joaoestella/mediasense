@@ -238,7 +238,7 @@ class PlanBuilder:
     # -- helpers --------------------------------------------------------
     def _need_transcript(self) -> list[Word]:
         if not self.transcript:
-            raise ValueError("this operation needs a transcript (run `wordcut transcribe` first)")
+            raise ValueError("this operation needs a transcript (run `mediasense transcribe` first)")
         return self.words
 
     def _padded(self, i: int, j: int) -> Range:

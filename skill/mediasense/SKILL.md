@@ -1,17 +1,17 @@
 ---
-name: wordcut
-description: Listen to audio and watch video the user provides - transcribe speech in any language with a timestamp for every word, find when something is said, cut audio/video by text (phrases, filler words, silences), make subtitles or EDL/FCPXML for video editors, drop an audio clip into a video at the right moment, and explain what happens in a video. Use whenever the user shares or mentions an audio/video file and wants it understood, transcribed, timed, edited or captioned.
+name: mediasense
+description: Listen to audio and watch video - files or links (TikTok, YouTube, Instagram, X). Summarize or explain a video, transcribe speech in any language with word timestamps, find when something is said, cut by text (phrases, fillers, silences), make subtitles or EDL/FCPXML, drop audio into a video. Use whenever the user shares a media link or file and wants it understood, summarized, transcribed, edited or captioned.
 ---
 
-# wordcut
+# mediasense
 
-wordcut gives you ears and eyes for media files on the user's machine. Use the `wordcut` MCP tools when
-they are connected; otherwise run the `wordcut` CLI in a shell (same features, `wordcut --help`).
+mediasense gives you ears and eyes for media files on the user's machine. Use the `mediasense` MCP tools when
+they are connected; otherwise run the `mediasense` CLI in a shell (same features, `mediasense --help`).
 
 ## Golden rules
 
 - **Never modify the original.** Every output is a new file (`<name>.edited.mp4`, `<name>.placed.mp4`…).
-- **Preview before cutting.** Run `plan_edit` (CLI: `wordcut edit … --dry-run`), show the user the cut list
+- **Preview before cutting.** Run `plan_edit` (CLI: `mediasense edit … --dry-run`), show the user the cut list
   in plain words ("I'll remove 14 'um's and shorten 6 pauses, 2:31 → 2:12"), then `render_edit`.
 - **Transcribe once.** The transcript is saved as `<name>.transcript.json` next to the media and every
   other tool finds it automatically.
@@ -19,9 +19,12 @@ they are connected; otherwise run the `wordcut` CLI in a shell (same features, `
 
 ## Workflows
 
-### "What does this audio say?" / "Summarize this voice note"
-1. `transcribe(path)` — language is auto-detected; pass `language` if detection is wrong.
-2. Answer from the transcript, citing times (`at 0:42 she says…`).
+### "Summarize this" / "What is this video about?" / a pasted link
+1. `understand(source)` — works with a file path **or a link**. One call returns the post metadata, the
+   transcript and, for videos, contact sheets of key frames with what is said per shot.
+2. Pass `vocabulary` with names you can infer (title, hashtags, the user's message) and `language` if
+   known. Fix remaining mis-hearings using the title and on-screen text.
+3. Answer in the user's language, citing times (`at 0:42 he shows…`).
 
 ### "When does he say X?"
 `search_transcript(path, "X")` → list of start/end times. Case, accents and punctuation are ignored.
@@ -46,7 +49,7 @@ they are connected; otherwise run the `wordcut` CLI in a shell (same features, `
    `replace`. `insert_from`/`insert_to` use only a slice of the clip (find it by transcribing the clip too).
 
 ### "What happens in this video?"
-1. `transcribe(path)` (so shots include speech), then `watch_video(path)`.
+1. `understand(source)` (or `transcribe` + `watch_video` separately).
 2. Look at the contact sheets: each tile shows shot number and start time; the text lists what is said per
    shot. Describe the video chronologically with timestamps; `get_frame(path, "2:10")` to inspect detail.
 
@@ -57,6 +60,6 @@ CPU · `turbo`: near large-v3 quality, faster. If a GPU is available it is used 
 
 ## Troubleshooting
 - "ffmpeg not found": the user must install FFmpeg (brew/winget/apt install ffmpeg).
-- "backend needs …": `pip install "wordcut[whisper]"` (or `[whisperx]`, `[api]`).
+- "backend needs …": `pip install "mediasense[whisper]"` (or `[whisperx]`, `[api]`).
 - Cut sounds clipped: lower `pad` (CLI `--pad 0.05`) or use the whisperx backend.
 - Phrase "not found": `read_transcript(path, start, end)` to see how the model actually spelled it.

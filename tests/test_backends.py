@@ -6,8 +6,8 @@ from types import SimpleNamespace as NS
 
 import pytest
 
-from wordcut import transcribe as tr_mod
-from wordcut.transcribe import TranscriptionError, _from_openai_response, _from_whisperx_result, transcribe
+from mediasense import transcribe as tr_mod
+from mediasense.transcribe import TranscriptionError, _from_openai_response, _from_whisperx_result, transcribe
 
 
 @pytest.fixture
@@ -75,7 +75,7 @@ def test_explicit_gpu_failure_is_not_hidden(fake_faster_whisper, audio_file, mon
 
 def test_missing_backend_message(monkeypatch, audio_file):
     monkeypatch.setitem(sys.modules, "faster_whisper", None)
-    with pytest.raises(TranscriptionError, match=r"wordcut\[whisper\]"):
+    with pytest.raises(TranscriptionError, match=r"mediasense\[whisper\]"):
         transcribe(audio_file)
 
 
@@ -131,8 +131,8 @@ def test_no_silence_warning_for_real_audio(fake_faster_whisper, audio_file):
 
 
 def test_drop_repetition_loops():
-    from wordcut.models import Segment, Transcript, Word
-    from wordcut.transcribe import drop_repetition_loops
+    from mediasense.models import Segment, Transcript, Word
+    from mediasense.transcribe import drop_repetition_loops
 
     words = [Word(" ahn,", 1.84, 2.08), Word(" ahn,", 2.08, 2.32), Word(" ahn,", 2.5, 2.88)]
     words += [Word(" ahn,", 3.44, 3.44) for _ in range(60)] + [Word(" ah", 3.62, 3.62), Word(" fim", 3.7, 3.9)]
