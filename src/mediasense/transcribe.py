@@ -211,7 +211,7 @@ def _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language,
                         hotwords=None) -> Transcript:
     say(f"loading model '{model_name}' on {dev} (first run downloads it)…")
     m = WhisperModel(model_name, device=dev, compute_type=compute)
-    say("transcribing…")
+    say(f"transcribing {len(audio) / 16000:.1f}s of audio…")
     kwargs = dict(language=language, word_timestamps=True, vad_filter=True,
                   initial_prompt=prompt, condition_on_previous_text=False)
     if hotwords:
@@ -257,7 +257,7 @@ def _whisperx(wav, model_name, language, device, prompt, diarize, hf_token, say,
         kwargs["asr_options"] = asr_options
     m = whisperx.load_model(model_name, device, **kwargs)
     audio = whisperx.load_audio(str(wav))
-    say("transcribing…")
+    say(f"transcribing {len(audio) / 16000:.1f}s of audio…")
     result = m.transcribe(audio, batch_size=16 if device == "cuda" else 4)
     lang = result.get("language", language)
     say(f"aligning words ({lang})…")

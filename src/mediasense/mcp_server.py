@@ -22,6 +22,7 @@ except ImportError:  # SDK 1.x
 from . import api
 from .edit import find_phrase
 from .fetch import fetch, is_url
+from .jobs import manager as jobs
 from .media import extract_frame, probe
 from .media import place_audio as _place_audio
 from .models import Transcript, fmt_time, parse_time
@@ -38,6 +39,8 @@ link (TikTok, YouTube, Instagram, X, Vimeo…); it is downloaded once and reused
 - To place a clip: find the moment with search_transcript / understand, then place_audio.
 - Pass `vocabulary` with brand names and jargon you can infer (title, screen text, the user's words) so
   they are spelled correctly. Fix remaining obvious mis-hearings when you report back.
+- Long work (new videos, the first run that downloads the speech model) answers "STILL WORKING — job …".
+  Tell the user it's processing, then call check_job(job_id) until the result arrives. Never restart it.
 - Times accept seconds (75.5) or m:ss (1:15.5). Quote times to the user as m:ss.
 """
 
@@ -88,6 +91,54 @@ def _transcript(path: str) -> Transcript:
     return t
 
 
+# ------------------------------------------------------------------ background jobs
+def _wait_seconds() -> float:
+    try:
+        return max(1.0, min(float(os.environ.get("MEDIASENSE_TOOL_WAIT", "30")), 110.0))
+    except ValueError:
+        return 30.0
+
+
+def _background(kind: str, key: str, label: str, work):
+    """Run ``work(progress)`` as a job; answer with its result if it finishes within the wait,
+    otherwise with a short 'still working' note (clients time out on long tool calls)."""
+    job = jobs.submit(kind, key, label, work)
+    jobs.wait(job, _wait_seconds())
+    return _job_reply(job)
+
+
+def _job_reply(job):
+    if job.status == "done":
+        return job.result
+    if job.status == "error":
+        raise ToolError(f"{job.kind} failed: {job.error}")
+    ahead = jobs.queue_position(job) - 1 if job.status == "queued" else 0
+    queue = f" It is waiting for {ahead + 1} earlier job(s) to finish." if job.status == "queued" else ""
+    return (f"STILL WORKING — job {job.id}: {job.summary()}.{queue}\n"
+            f'Call check_job(job_id="{job.id}") to continue; it waits up to {_wait_seconds():.0f}s and returns '
+            "the result as soon as it is ready. Tell the user in one line that it's processing (long videos and "
+            "the first-ever run, which downloads the speech model, take a few minutes). Don't start the same "
+            "request again.")
+
+
+@mcp.tool()
+def check_job(job_id: str = ""):
+    """Get the result of a long-running mediasense job (understand, transcribe, render_edit, watch_video).
+
+    Waits up to ~30s; returns the finished result, or the progress so far plus the same job_id to check again.
+    Without job_id, lists jobs that are still running.
+    """
+    if not job_id:
+        active = jobs.active()
+        return "\n".join(f"{j.id}: {j.summary()}" for j in active) if active else "No jobs running."
+    job = jobs.get(job_id)
+    if job is None:
+        raise ToolError(f"unknown job {job_id!r} (the server may have restarted) — run the original request "
+                        "again; finished work on disk is reused")
+    jobs.wait(job, _wait_seconds())
+    return _job_reply(job)
+
+
 @mcp.tool()
 def media_info(path: str) -> str:
     """Duration, resolution, fps and which streams (audio/video) a file has."""
@@ -118,19 +169,25 @@ def transcribe(
     """
     from .transcribe import transcribe as _tr
 
-    src = _path(path)
-    out = api.default_transcript_path(src)
-    if out.exists() and not force:
-        t = Transcript.load(out)
-        note = "(existing transcript reused; pass force=true to redo)"
-    else:
-        t = _tr(src, backend=backend, model=model, language=language,
-                verbatim=verbatim, diarize=diarize, vocabulary=vocabulary)
-        t.save(out)
-        note = ""
-    head = (f"transcript: {out} {note}\nlanguage: {t.language} · words: {len(t.words())} · "
-            f"duration: {fmt_time(t.duration or 0)}\n\n")
-    return head + api.transcript_excerpt(t, max_chars=12000)
+    def work(progress):
+        if is_url(path):
+            progress("opening the link (downloads the video the first time)…")
+        src = _path(path)
+        out = api.default_transcript_path(src)
+        if out.exists() and not force:
+            t = Transcript.load(out)
+            note = "(existing transcript reused; pass force=true to redo)"
+        else:
+            t = _tr(src, backend=backend, model=model, language=language, verbatim=verbatim,
+                    diarize=diarize, vocabulary=vocabulary, progress=progress)
+            t.save(out)
+            note = ""
+        head = (f"transcript: {out} {note}\nlanguage: {t.language} · words: {len(t.words())} · "
+                f"duration: {fmt_time(t.duration or 0)}\n\n")
+        return head + api.transcript_excerpt(t, max_chars=12000)
+
+    key = f"{path}|{language}|{model}|{backend}|{verbatim}|{diarize}|{force}|{vocabulary}"
+    return _background("transcribe", key, path, work)
 
 
 @mcp.tool()
@@ -224,21 +281,28 @@ def render_edit(
     Writes <file>.edited.<ext> unless media=false or output is given. edl → Premiere/Resolve/Avid,
     fcpxml → Final Cut/Resolve, srt → subtitles re-timed to the edited version.
     """
-    src, t, plan, info, report = _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers,
-                                       filler_words, silences, silence_keep, silence_source, occurrence)
-    if not plan.cuts:
-        return "Nothing to cut." + (f" Not found: {report['not_found']}" if report["not_found"] else "")
-    d = api.outputs_for(src)
-    written = api.apply_plan(
-        src, plan, info, t,
-        output=(_path(output) if output else d["media"]) if media else None,
-        edl=d["edl"] if edl else None,
-        fcpxml=d["fcpxml"] if fcpxml else None,
-        subtitles=d["srt"] if srt else None,
-        transcript_out=d["transcript"] if t is not None else None,
-    )
-    lines = [plan.summary(limit=30), "", "written:"] + [f"  {k}: {v}" for k, v in written.items()]
-    return "\n".join(lines)
+    def work(progress):
+        progress("planning the edit…")
+        src, t, plan, info, report = _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers,
+                                           filler_words, silences, silence_keep, silence_source, occurrence)
+        if not plan.cuts:
+            return "Nothing to cut." + (f" Not found: {report['not_found']}" if report["not_found"] else "")
+        progress(f"rendering {len(plan.cuts)} cut(s)…")
+        d = api.outputs_for(src)
+        written = api.apply_plan(
+            src, plan, info, t,
+            output=(_path(output) if output else d["media"]) if media else None,
+            edl=d["edl"] if edl else None,
+            fcpxml=d["fcpxml"] if fcpxml else None,
+            subtitles=d["srt"] if srt else None,
+            transcript_out=d["transcript"] if t is not None else None,
+        )
+        lines = [plan.summary(limit=30), "", "written:"] + [f"  {k}: {v}" for k, v in written.items()]
+        return "\n".join(lines)
+
+    key = json.dumps([path, cut_phrases, cut_between, cut_ranges, keep_only, fillers, filler_words, silences,
+                      silence_keep, silence_source, occurrence, output, edl, fcpxml, srt, media], default=str)
+    return _background("render_edit", key, path, work)
 
 
 @mcp.tool()
@@ -287,7 +351,7 @@ def place_audio(
 
 
 @mcp.tool()
-def watch_video(path: str, max_frames: int = 24, threshold: float = 0.3, include_images: bool = True):
+def watch_video(path: str, max_frames: int = 24, threshold: float | None = None, include_images: bool = True):
     """Understand a video: key frames at scene changes + what is said during each shot.
 
     Returns a shot list (time, speech) and contact-sheet images labelled with shot number and time.
@@ -295,21 +359,27 @@ def watch_video(path: str, max_frames: int = 24, threshold: float = 0.3, include
     """
     from .video import storyboard
 
-    src = _path(path)
-    t = api.load_transcript_for(src)
-    out = Path(src).with_name(Path(src).stem + ".storyboard")
-    data = storyboard(src, out, t, threshold=threshold, max_frames=max_frames)
-    lines = [f"video: {src}", f"duration {fmt_time(data['duration'])} · {data['resolution']} · "
-             f"{len(data['shots'])} shots · folder: {out}"]
-    if not t:
-        lines.append("(no transcript yet — call transcribe(path) to include speech)")
-    for s in data["shots"]:
-        lines.append(f"#{s['index']} {s['start_tc']}–{s['end_tc']}: {s['speech'] or '—'}")
-    result: list = ["\n".join(lines)]
-    if include_images:
-        for sheet in data["contact_sheets"]:
-            result.append(Image(path=str(out / sheet)))
-    return result
+    def work(progress):
+        if is_url(path):
+            progress("opening the link (downloads the video the first time)…")
+        src = _path(path)
+        t = api.load_transcript_for(src)
+        out = Path(src).with_name(Path(src).stem + ".storyboard")
+        progress("picking key frames…")
+        data = storyboard(src, out, t, threshold=threshold, max_frames=max_frames)
+        lines = [f"video: {src}", f"duration {fmt_time(data['duration'])} · {data['resolution']} · "
+                 f"{len(data['shots'])} shots · folder: {out}"]
+        if not t:
+            lines.append("(no transcript yet — call transcribe(path) to include speech)")
+        for sh in data["shots"]:
+            lines.append(f"#{sh['index']} {sh['start_tc']}–{sh['end_tc']}: {sh['speech'] or '—'}")
+        result: list = ["\n".join(lines)]
+        if include_images:
+            for sheet in data["contact_sheets"]:
+                result.append(Image(path=str(out / sheet)))
+        return result
+
+    return _background("watch_video", f"{path}|{max_frames}|{threshold}|{include_images}", path, work)
 
 
 @mcp.tool()
@@ -341,14 +411,18 @@ def understand(
 
     vocabulary: brand names / jargon to spell right. language: ISO code if known (pt, en…).
     """
-    data = api.understand(source, language=language, model=model, vocabulary=vocabulary,
-                          max_frames=max_frames, force=force)
-    out: list = [api.understand_report(data)]
-    sb = data.get("storyboard")
-    if include_images and sb:
-        for sheet in sb.get("contact_sheets", []):
-            out.append(Image(path=str(Path(data["storyboard_dir"]) / sheet)))
-    return out
+    def work(progress):
+        data = api.understand(source, language=language, model=model, vocabulary=vocabulary,
+                              max_frames=max_frames, force=force, progress=progress)
+        out: list = [api.understand_report(data)]
+        sb = data.get("storyboard")
+        if include_images and sb:
+            for sheet in sb.get("contact_sheets", []):
+                out.append(Image(path=str(Path(data["storyboard_dir"]) / sheet)))
+        return out
+
+    key = f"{source}|{language}|{model}|{max_frames}|{include_images}|{force}|{vocabulary}"
+    return _background("understand", key, source, work)
 
 
 # ------------------------------------------------------------------ prompts

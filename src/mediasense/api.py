@@ -199,10 +199,12 @@ def understand(
 
     Reuses the transcript/storyboard already on disk unless ``force``.
     """
-    from .fetch import read_info, resolve
+    from .fetch import is_url, read_info, resolve
     from .transcribe import transcribe
 
     say = progress or (lambda _m: None)
+    if is_url(source):
+        say("opening the link (downloads the video the first time)…")
     src = resolve(source)
     info = probe(src)
     meta = read_info(src)
@@ -265,6 +267,11 @@ def understand_report(result: dict, max_chars: int = 15000) -> str:
         lines += ["", "(no audio track)"]
     sb = result.get("storyboard")
     if sb:
+        sheets = [str(Path(result["storyboard_dir"]) / name) for name in sb.get("contact_sheets", [])]
+        if sheets:
+            lines += ["", "## Key frames",
+                      "Contact sheets (open these images to see the video; each tile is labelled #shot and time):"]
+            lines += [f"- {p}" for p in sheets]
         lines += ["", f"## Shots ({len(sb['shots'])}; contact sheets show #number and start time)"]
         for s in sb["shots"]:
             lines.append(f"#{s['index']} {s['start_tc']}–{s['end_tc']}: {s['speech'] or '—'}")

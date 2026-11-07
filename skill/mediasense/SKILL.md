@@ -17,6 +17,10 @@ they are connected; otherwise run the `mediasense` CLI in a shell (same features
   other tool finds it automatically.
 - Times are seconds (`75.5`) or `m:ss.s` (`1:15.5`). Quote timestamps back to the user as `m:ss`.
 
+- **Long jobs.** `understand`, `transcribe`, `render_edit` and `watch_video` reply
+  `STILL WORKING — job <id>` when they need more than ~30 s. Tell the user it's processing (with the
+  percentage), then call `check_job(job_id)` until the result arrives. Don't start the request again.
+
 ## Workflows
 
 ### "Summarize this" / "What is this video about?" / a pasted link

@@ -109,6 +109,11 @@ The server adds ready-made prompts. In Claude Code they appear as `/mcp__mediase
 | `place_audio` | insert a clip at a timestamp (mix / duck / replace) |
 | `watch_video`, `get_frame` | contact sheets, or one frame at a given time |
 | `media_info` | duration, resolution, fps, streams |
+| `check_job` | result of long work: new videos and the first run reply "still working" and finish in the background |
+
+Long work never hits Claude's tool time limit: if a video takes more than ~30 s (a long video on a
+CPU, or the very first run while the speech model downloads), the tool answers "still working" with a
+progress percentage and Claude checks back with `check_job` until it's done.
 
 All tools accept a file path **or a link**. Links are downloaded once to `~/Downloads/mediasense`
 (change with `MEDIASENSE_HOME`) and reused.
