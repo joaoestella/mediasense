@@ -86,10 +86,43 @@ def transcribe(
         else:
             tr = _openai(wav, model, language, prompt, say)
 
+    removed = drop_repetition_loops(tr)
+    if removed:
+        say(f"warning: dropped {removed} zero-length repeated word(s) — the model got stuck in a loop. "
+            "This usually means music/noise instead of speech; try without --verbatim or a smaller model.")
     tr.duration = info.duration
     tr.source = str(path)
     tr.backend = backend
     return tr
+
+
+def drop_repetition_loops(tr: Transcript, min_duration: float = 0.02) -> int:
+    """Remove Whisper "looping" artifacts: the same word repeated with ~0 s duration.
+
+    Real repeated words ("ah, ah, ah") each take time; a decoding loop stacks
+    dozens of copies on one timestamp. Returns how many words were dropped.
+    """
+    from .edit import normalize
+
+    removed = 0
+    kept_segments = []
+    for seg in tr.segments:
+        kept: list[Word] = []
+        for w in seg.words:
+            if (kept and w.end - w.start < min_duration
+                    and normalize(w.text) == normalize(kept[-1].text)):
+                removed += 1
+                continue
+            kept.append(w)
+        if not kept:
+            continue
+        if len(kept) != len(seg.words):
+            seg.words = kept
+            seg.text = join_words([w.text for w in kept])
+            seg.end = max(kept[-1].end, seg.start)
+        kept_segments.append(seg)
+    tr.segments = kept_segments
+    return removed
 
 
 # ---------------------------------------------------------------- backends

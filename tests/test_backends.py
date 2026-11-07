@@ -128,3 +128,18 @@ def test_no_silence_warning_for_real_audio(fake_faster_whisper, audio_file):
     messages = []
     transcribe(audio_file, progress=messages.append)
     assert not any("silent" in m for m in messages)
+
+
+def test_drop_repetition_loops():
+    from wordcut.models import Segment, Transcript, Word
+    from wordcut.transcribe import drop_repetition_loops
+
+    words = [Word(" ahn,", 1.84, 2.08), Word(" ahn,", 2.08, 2.32), Word(" ahn,", 2.5, 2.88)]
+    words += [Word(" ahn,", 3.44, 3.44) for _ in range(60)] + [Word(" ah", 3.62, 3.62), Word(" fim", 3.7, 3.9)]
+    tr = Transcript(segments=[Segment(1.84, 3.9, "x", words)])
+    assert drop_repetition_loops(tr) == 60
+    assert [w.text.strip() for w in tr.words()] == ["ahn,", "ahn,", "ahn,", "ah", "fim"]
+    # genuine repetitions that take time are kept
+    ahs = [Word(" ah", 0, 0.3), Word(" ah", 0.4, 0.7), Word(" ah", 0.8, 1.1)]
+    real = Transcript(segments=[Segment(0, 2, "x", ahs)])
+    assert drop_repetition_loops(real) == 0
