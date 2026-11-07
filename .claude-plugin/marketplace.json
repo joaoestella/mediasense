@@ -1,0 +1,15 @@
+{
+  "name": "mediasense",
+  "description": "mediasense: give Claude ears and eyes for video and audio.",
+  "owner": {
+    "name": "joaoestella",
+    "url": "https://github.com/joaoestella"
+  },
+  "plugins": [
+    {
+      "name": "mediasense",
+      "source": "./",
+      "description": "Watch and listen to videos and audio: summarize, explain, transcribe and edit TikTok, YouTube or Instagram links and local files. Runs locally."
+    }
+  ]
+}

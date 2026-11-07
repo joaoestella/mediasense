@@ -1,5 +1,12 @@
 # mediasense
 
+<!-- mcp-name: io.github.joaoestella/mediasense -->
+
+[![PyPI](https://img.shields.io/pypi/v/mediasense)](https://pypi.org/project/mediasense/)
+[![Python](https://img.shields.io/pypi/pyversions/mediasense)](https://pypi.org/project/mediasense/)
+[![CI](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/joaoestella/mediasense/blob/main/LICENSE)
+
 **Give Claude ears and eyes.** Paste a TikTok, YouTube or Instagram link (or point at a file) in Claude
 Code or Claude Desktop and ask in plain language. Claude can then summarize the video, explain what
 happens in it, find the moment something is said, or edit it.
@@ -71,6 +78,34 @@ mediasense doctor
 
 Use `python -m pipx …` rather than plain `pipx` right after installing it: the `pipx` command only
 appears on PATH in a new terminal. No Git needed.
+</details>
+
+<details>
+<summary>As a Claude plugin (skill + server in one)</summary>
+
+The repository is also a Claude plugin: installing it adds both the mediasense tools and the skill that
+tells Claude when to use them. It starts the server with [uv](https://docs.astral.sh/uv/), so install uv
+first (`winget install astral-sh.uv` · `brew install uv` · `curl -LsSf https://astral.sh/uv/install.sh | sh`)
+plus FFmpeg if you don't have it.
+
+In Claude Code:
+
+```
+/plugin install mediasense --marketplace joaoestella/mediasense
+```
+</details>
+
+<details>
+<summary>Any other MCP client (Cursor, VS Code, Windsurf…)</summary>
+
+mediasense is a standard stdio MCP server, also listed in the
+[official MCP Registry](https://registry.modelcontextprotocol.io/) as `io.github.joaoestella/mediasense`:
+
+```json
+{ "mcpServers": { "mediasense": { "command": "uvx", "args": ["mediasense", "mcp"] } } }
+```
+
+Or with a normal install: `pipx install mediasense`, then use `mediasense mcp` as the command.
 </details>
 
 <details>
@@ -192,6 +227,15 @@ EDL opens in Premiere, Resolve and Avid; FCPXML in Final Cut Pro and Resolve.
   `--backend whisperx` (`pip install "mediasense[whisperx]"`).
 - Downloading from links follows each site's terms. Use it for content you're allowed to download.
 
+## Privacy Policy
+
+mediasense runs entirely on your computer: no accounts, no analytics, no telemetry, and the author
+receives no data. It connects to the internet only to download the links you ask about, the speech
+model (first run), FFmpeg if it's missing, and – only if you choose the `openai` backend – to send audio
+to the transcription API you configure. Results stay on your disk until you delete them. When used from
+Claude, tool results (transcripts, key frames, metadata) are returned to the Claude app and handled
+under Anthropic's privacy policy. Full policy: [PRIVACY.md](PRIVACY.md).
+
 ## Development
 
 ```bash
@@ -206,9 +250,11 @@ one-click Claude Desktop extension (`.mcpb`), and a GUI.
 
 ## Releasing
 
-1. Bump `version` in `pyproject.toml` and `src/mediasense/__init__.py`, commit.
-2. `git tag vX.Y.Z && git push origin vX.Y.Z`. The Release workflow publishes to PyPI and creates a
-   GitHub release with the wheel, `mediasense-skill.zip` and `mediasense.mcpb`.
+1. Bump `version` in `pyproject.toml`, `src/mediasense/__init__.py`, `server.json` (both places) and
+   `.claude-plugin/plugin.json`, commit. The workflow refuses a tag that doesn't match them.
+2. `git tag vX.Y.Z && git push origin vX.Y.Z`. The Release workflow publishes to PyPI, updates the entry
+   in the [MCP Registry](https://registry.modelcontextprotocol.io/) and creates a GitHub release with the
+   wheel, `mediasense-skill.zip` and `mediasense.mcpb`.
 
 One-time PyPI setup (trusted publishing, no token): on pypi.org → *Your account → Publishing → Add a
 new pending publisher*: project `mediasense`, owner `joaoestella`, repository `mediasense`, workflow

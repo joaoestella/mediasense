@@ -2,6 +2,7 @@ name: Release
 
 # Push a tag like v0.4.1 to publish:
 #   - the Python package on PyPI (trusted publishing, see README "Releasing")
+#   - the server entry in the official MCP Registry (server.json)
 #   - a GitHub release with the wheel, the Claude skill zip and the Claude Desktop extension (.mcpb)
 on:
   push:
@@ -26,6 +27,9 @@ jobs:
         run: |
           V=$(python -c "import tomllib; print(tomllib.load(open('pyproject.toml','rb'))['project']['version'])")
           test "v$V" = "$GITHUB_REF_NAME" || { echo "tag $GITHUB_REF_NAME != version $V in pyproject.toml"; exit 1; }
+          for f in server.json .claude-plugin/plugin.json; do
+            test "$(jq -r .version $f)" = "$V" || { echo "$f version != $V"; exit 1; }
+          done
           echo "VERSION=$V" >> "$GITHUB_ENV"
 
       - name: Build the Python package
@@ -34,7 +38,7 @@ jobs:
       - name: Skill zip (upload in Claude → Settings → Skills)
         run: |
           mkdir -p out/skill
-          cp -r skill/mediasense out/skill/
+          cp -r skills/mediasense out/skill/
           (cd out/skill && zip -r ../mediasense-skill.zip mediasense)
 
       - name: Claude Desktop extension (.mcpb)
@@ -49,6 +53,15 @@ jobs:
         # needs the one-time trusted-publisher setup on pypi.org; the GitHub release is made either way
         continue-on-error: true
         uses: pypa/gh-action-pypi-publish@release/v1
+
+      - name: Publish to the MCP Registry (registry.modelcontextprotocol.io)
+        # needs the PyPI upload above: the registry checks for "mcp-name:" in the PyPI description
+        continue-on-error: true
+        run: |
+          curl -fsSL "https://github.com/modelcontextprotocol/registry/releases/latest/download/mcp-publisher_linux_amd64.tar.gz" | tar xz mcp-publisher
+          jq --arg v "$VERSION" '.version = $v | .packages[0].version = $v' server.json > server.tmp && mv server.tmp server.json
+          ./mcp-publisher login github-oidc
+          for i in 1 2 3 4 5; do ./mcp-publisher publish && exit 0; sleep 30; done; exit 1
 
       - name: Create GitHub release
         env:

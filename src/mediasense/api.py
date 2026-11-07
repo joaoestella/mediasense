@@ -156,6 +156,29 @@ def outputs_for(media: str | Path, suffix: str = "edited") -> dict[str, Path]:
     }
 
 
+def unique_path(path: str | Path) -> Path:
+    """``path`` if it doesn't exist yet, else ``name (2).ext``, ``name (3).ext`` …"""
+    p = Path(path)
+    if not p.exists():
+        return p
+    stem, ext = (p.name[: -len(".transcript.json")], ".transcript.json") if p.name.endswith(
+        ".transcript.json") else (p.stem, p.suffix)
+    n = 2
+    while (p.with_name(f"{stem} ({n}){ext}")).exists():
+        n += 1
+    return p.with_name(f"{stem} ({n}){ext}")
+
+
+def fresh_outputs_for(media: str | Path) -> dict[str, Path]:
+    """Like :func:`outputs_for`, but never pointing at files that already exist."""
+    n = 1
+    while True:
+        outs = outputs_for(media, "edited" if n == 1 else f"edited ({n})")
+        if not any(p.exists() for p in outs.values()):
+            return outs
+        n += 1
+
+
 def transcript_excerpt(t: Transcript, start: float | None = None, end: float | None = None,
                        words: bool = False, max_chars: int = 20000) -> str:
     """Compact, model-friendly view with timestamps."""

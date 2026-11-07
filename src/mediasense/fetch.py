@@ -48,8 +48,11 @@ def _safe(text: str) -> str:
     return re.sub(r"[^\w.-]+", "_", text, flags=re.UNICODE).strip("_")[:80] or "media"
 
 
-def fetch(url: str, dest: str | Path | None = None, audio_only: bool = False) -> Path:
-    """Download ``url`` (or return the cached file) and return its local path."""
+def fetch(url: str, dest: str | Path | None = None, audio_only: bool = False, download: bool = True) -> Path:
+    """Download ``url`` (or return the cached file) and return its local path.
+
+    ``download=False`` only returns an already-downloaded copy (read-only tools use this).
+    """
     try:
         import yt_dlp  # type: ignore
     except ImportError as e:
@@ -70,6 +73,11 @@ def fetch(url: str, dest: str | Path | None = None, audio_only: bool = False) ->
         "format": "bestaudio/best" if audio_only else "bv*[height<=1080]+ba/b[height<=1080]/b",
         "merge_output_format": None if audio_only else "mp4",
     }
+    if not download:
+        found = _find_downloaded(url, out_dir)
+        if found:
+            return found
+        raise FetchError("this link hasn't been downloaded yet – call understand_media or transcribe on it first")
     errors: list[str] = []
     for label, extra in _attempts():
         try:
@@ -148,6 +156,24 @@ def _clean(e: Exception) -> str:
     return msg.split("; please report this issue")[0]
 
 
+def _find_downloaded(url: str, out_dir: Path) -> Path | None:
+    """Cached copy of ``url`` without touching the network: match the .info.json we keep per download."""
+    import json
+
+    want = url.split("?")[0].rstrip("/")
+    for info_file in out_dir.glob("*.info.json"):
+        try:
+            seen = (json.loads(info_file.read_text(encoding="utf-8")).get("webpage_url") or "").split("?")[0]
+        except (OSError, ValueError):
+            continue
+        if seen.rstrip("/") == want:
+            stem = info_file.name[: -len(".info.json")]
+            for p in out_dir.glob(stem + ".*"):
+                if p.is_file() and p.suffix.lower() not in (".json", ".part", ".ytdl"):
+                    return p
+    return None
+
+
 def _stem(info: dict) -> str:
     return f"{_safe(str(info.get('extractor', 'web')))}_{_safe(str(info.get('id', 'media')))}"
 
@@ -194,10 +220,10 @@ def read_info(path: str | Path) -> dict | None:
     return None
 
 
-def resolve(path_or_url: str) -> Path:
+def resolve(path_or_url: str, download: bool = True) -> Path:
     """File path or link -> local file path."""
     if is_url(path_or_url):
-        return fetch(path_or_url)
+        return fetch(path_or_url, download=download)
     p = Path(os.path.expanduser(path_or_url.strip().strip('"'))).resolve()
     if not p.exists():
         raise FileNotFoundError(f"file not found: {p}")

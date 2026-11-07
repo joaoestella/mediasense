@@ -116,3 +116,47 @@ def test_mcp_tool_listing():
     names = {t.name for t in tools}
     assert {"transcribe", "read_transcript", "search_transcript", "plan_edit", "render_edit",
             "export_transcript", "place_audio", "watch_video", "get_frame", "media_info"} <= names
+
+
+def test_every_tool_has_title_and_annotations():
+    """Directory requirement: every tool has a title and readOnlyHint/destructiveHint."""
+    pytest.importorskip("mcp")
+    import asyncio
+
+    from mediasense.mcp_server import _server
+
+    tools = asyncio.run(_server.list_tools())
+    assert len(tools) == 12
+    for t in tools:
+        ann = t.annotations.model_dump(by_alias=True, exclude_none=True)
+        assert t.title, t.name
+        assert "readOnlyHint" in ann and ann["destructiveHint"] is False, t.name
+    ro = {t.name for t in tools if t.annotations.model_dump(by_alias=True)["readOnlyHint"]}
+    assert ro == {"check_job", "media_info", "read_transcript", "search_transcript", "plan_edit"}
+
+
+def test_mcp_never_overwrites_results(video_file, transcript, tmp_path):
+    pytest.importorskip("mcp")
+    import shutil
+
+    from mediasense import mcp_server as s
+
+    video = tmp_path / "talk.mp4"
+    shutil.copy(video_file, video)
+    transcript.save(tmp_path / "talk.transcript.json")
+    first = s.render_edit(str(video), cut_ranges=["0-1"], edl=True)
+    second = s.render_edit(str(video), cut_ranges=["0-1"], edl=True)
+    assert "talk.edited.mp4" in first and "talk.edited (2).mp4" in second
+    assert "talk.edited (2).edl" in second
+    a = s.export_transcript(str(video), ["srt"])
+    b = s.export_transcript(str(video), ["srt"])
+    assert a.endswith("talk.srt") and b.endswith("talk (2).srt")
+
+
+def test_read_only_tools_dont_download(monkeypatch, tmp_path):
+    pytest.importorskip("mcp")
+    from mediasense import mcp_server as s
+
+    monkeypatch.setenv("MEDIASENSE_HOME", str(tmp_path))
+    with pytest.raises(Exception, match="hasn't been downloaded yet"):
+        s.read_transcript("https://www.tiktok.com/@x/video/1")

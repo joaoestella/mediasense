@@ -17,7 +17,7 @@ def skill_text() -> str:
         return files("mediasense").joinpath("_skill/SKILL.md").read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError, OSError):
         # editable install / running from a checkout
-        repo = Path(__file__).resolve().parents[2] / "skill" / SKILL_NAME / "SKILL.md"
+        repo = Path(__file__).resolve().parents[2] / "skills" / SKILL_NAME / "SKILL.md"
         return repo.read_text(encoding="utf-8")
 
 

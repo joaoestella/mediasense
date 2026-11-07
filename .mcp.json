@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "mediasense": {
+      "command": "uvx",
+      "args": ["--from", "mediasense[all,ffmpeg]", "mediasense", "mcp"]
+    }
+  }
+}

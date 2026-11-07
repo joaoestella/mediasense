@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mediasense – let Claude watch, summarize and edit TikTok, YouTube and Instagram videos</title>
+<meta name="description" content="Free, open-source MCP server that gives Claude ears and eyes: paste a TikTok, YouTube or Instagram link in Claude Desktop or Claude Code to summarize, transcribe (word timestamps, 99 languages) or edit the video. Runs locally.">
+<meta name="keywords" content="Claude video, Claude summarize YouTube, Claude TikTok, MCP server video, Claude Desktop MCP, transcribe video word timestamps, Whisper MCP, video summary AI, edit video by text">
+<link rel="canonical" href="https://joaoestella.github.io/mediasense/">
+<link rel="alternate" hreflang="en" href="https://joaoestella.github.io/mediasense/">
+<link rel="alternate" hreflang="pt-BR" href="https://github.com/joaoestella/mediasense/blob/main/README.pt-BR.md">
+<link rel="icon" href="https://raw.githubusercontent.com/joaoestella/mediasense/main/mcpb/icon.png">
+<meta property="og:type" content="website">
+<meta property="og:title" content="mediasense – give Claude ears and eyes">
+<meta property="og:description" content="Paste a TikTok, YouTube or Instagram link in Claude and ask. Summaries, transcripts with word timestamps and edits, all on your computer.">
+<meta property="og:url" content="https://joaoestella.github.io/mediasense/">
+<meta property="og:image" content="https://joaoestella.github.io/mediasense/social.png">
+<meta name="twitter:card" content="summary_large_image">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "mediasense",
+  "description": "Open-source MCP server and CLI that lets Claude watch and listen to videos and audio: summarize, explain, transcribe with word timestamps and edit TikTok, YouTube or Instagram links and local files. Runs locally.",
+  "applicationCategory": "MultimediaApplication",
+  "operatingSystem": "Windows, macOS, Linux",
+  "license": "https://opensource.org/licenses/MIT",
+  "url": "https://joaoestella.github.io/mediasense/",
+  "codeRepository": "https://github.com/joaoestella/mediasense",
+  "downloadUrl": "https://pypi.org/project/mediasense/",
+  "image": "https://joaoestella.github.io/mediasense/social.png",
+  "author": {"@type": "Person", "name": "joaoestella", "url": "https://github.com/joaoestella"},
+  "offers": {"@type": "Offer", "price": "0", "priceCurrency": "USD"}
+}
+</script>
+<style>
+  :root { --bg:#18181c; --panel:#222228; --fg:#f0f0f2; --muted:#a5a5af; --accent:#e88c48; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--fg); font:17px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif; }
+  main { max-width:880px; margin:0 auto; padding:48px 22px 80px; }
+  header { display:flex; gap:22px; align-items:center; }
+  header img { width:88px; height:88px; }
+  h1 { font-size:2.6rem; margin:0; line-height:1.1; }
+  .tag { color:var(--accent); font-weight:700; font-size:1.25rem; margin:4px 0 0; }
+  h2 { margin-top:2.6em; font-size:1.45rem; }
+  p, li { color:#d6d6dc; }
+  a { color:var(--accent); }
+  .demo { width:100%; border-radius:14px; margin:28px 0 6px; }
+  .note { color:var(--muted); font-size:.85rem; }
+  pre { background:var(--panel); padding:14px 16px; border-radius:10px; overflow-x:auto; font-size:.92rem; }
+  code { font-family:ui-monospace,Consolas,Menlo,monospace; }
+  .cta { display:flex; flex-wrap:wrap; gap:12px; margin:26px 0; }
+  .cta a { background:var(--accent); color:#1b1b1f; padding:10px 18px; border-radius:999px; font-weight:700; text-decoration:none; }
+  .cta a.alt { background:var(--panel); color:var(--fg); }
+  table { border-collapse:collapse; width:100%; }
+  td { padding:8px 10px; border-bottom:1px solid #33333a; vertical-align:top; }
+  td:first-child { white-space:nowrap; color:var(--fg); font-weight:600; }
+  footer { margin-top:60px; color:var(--muted); font-size:.9rem; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img src="https://raw.githubusercontent.com/joaoestella/mediasense/main/mcpb/icon.png" alt="mediasense icon">
+    <div>
+      <h1>mediasense</h1>
+      <p class="tag">Give Claude ears and eyes for video and audio</p>
+    </div>
+  </header>
+
+  <p>Claude can't open a TikTok, a YouTube video or an Instagram reel on its own. mediasense is a free,
+  open-source <strong>MCP server</strong> that lets it: paste a link (or point at a file) in
+  <strong>Claude Desktop</strong> or <strong>Claude Code</strong> and ask in plain language. Claude gets the
+  transcript with a timestamp for every word, the key frames of each shot, and tools to cut and edit.
+  Everything runs on your computer.</p>
+
+  <div class="cta">
+    <a href="https://github.com/joaoestella/mediasense#setup">Install (1 command)</a>
+    <a class="alt" href="https://github.com/joaoestella/mediasense">GitHub</a>
+    <a class="alt" href="https://pypi.org/project/mediasense/">PyPI</a>
+  </div>
+
+  <img class="demo" src="demo.gif" alt="Claude summarizing a TikTok video with mediasense: download, transcription and a summary with timestamps">
+  <p class="note">Real output for a 17-second TikTok by @elim.doc, shown with the creator's permission.</p>
+
+  <h2>What you can ask Claude</h2>
+  <pre><code>summarize this https://www.tiktok.com/@someone/video/7350…
+what does he show at 0:30? and what tool is he talking about?
+clean up ~/Desktop/podcast.m4a — remove the "um"s and long pauses
+make short captions for ~/Videos/reel.mp4
+put intro.mp3 under the first 5 seconds of talk.mp4, ducked</code></pre>
+
+  <h2>Features</h2>
+  <table>
+    <tr><td>Summarize videos</td><td>TikTok, YouTube, Instagram, X, Vimeo and ~1,800 other sites, or any local audio/video file.</td></tr>
+    <tr><td>Transcribe</td><td>About 99 languages with faster-whisper, a timestamp for every word, voice-activity filtering and vocabulary hints for names and jargon.</td></tr>
+    <tr><td>See the video</td><td>Key frames at scene changes and labelled contact sheets, so Claude can describe what is on screen.</td></tr>
+    <tr><td>Edit by text</td><td>Remove filler words, pauses or any sentence; Claude shows the cut list before rendering a new file. The original is never touched.</td></tr>
+    <tr><td>Subtitles</td><td>Export SRT, VTT, plain text, EDL or FCPXML for Premiere, DaVinci Resolve and Final Cut.</td></tr>
+    <tr><td>Place audio</td><td>Put music, a voice-over or a sound effect into a video at the right moment, with ducking.</td></tr>
+    <tr><td>Private</td><td>No account, no API key, no telemetry. Media and transcripts stay on your machine (<a href="https://github.com/joaoestella/mediasense/blob/main/PRIVACY.md">privacy policy</a>).</td></tr>
+    <tr><td>Fast on any PC</td><td>Works on CPU; NVIDIA GPU acceleration is an optional extra.</td></tr>
+  </table>
+
+  <h2>Install</h2>
+  <p><strong>Windows</strong> (PowerShell):</p>
+  <pre><code>irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 | iex</code></pre>
+  <p><strong>macOS / Linux</strong>:</p>
+  <pre><code>curl -LsSf https://raw.githubusercontent.com/joaoestella/mediasense/main/install.sh | sh</code></pre>
+  <p>Then quit Claude Desktop completely, open it again and ask <em>"summarize this video: &lt;link&gt;"</em>.
+  In Claude Code you can also install it as a plugin:</p>
+  <pre><code>/plugin install mediasense --marketplace joaoestella/mediasense</code></pre>
+  <p>Any other MCP client: <code>uvx mediasense mcp</code> (stdio).</p>
+
+  <h2>Command line</h2>
+  <pre><code>mediasense understand https://youtu.be/…      # transcript + shots + key frames
+mediasense transcribe talk.mp4 --language pt
+mediasense edit talk.mp4 --fillers --silences 0.6 --srt
+mediasense export talk.transcript.json talk.srt talk.vtt</code></pre>
+
+  <footer>
+    MIT licensed · made by <a href="https://github.com/joaoestella">joaoestella</a> ·
+    <a href="https://github.com/joaoestella/mediasense/blob/main/README.pt-BR.md">Português</a> ·
+    <a href="https://github.com/joaoestella/mediasense/issues">Report an issue</a>
+  </footer>
+</main>
+</body>
+</html>

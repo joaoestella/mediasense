@@ -1,5 +1,5 @@
 """mediasense — transcribe audio/video with word-level timestamps and edit it by text."""
 
-__version__ = "0.4.1"
+__version__ = "0.5.0"
 
 from .models import Segment, Transcript, Word  # noqa: E402,F401

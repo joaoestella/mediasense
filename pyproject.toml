@@ -4,31 +4,48 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mediasense"
-version = "0.4.1"
+version = "0.5.0"
 description = "Give Claude ears and eyes: understand, summarize and edit audio/video files or links (TikTok, YouTube…) with word-level timestamps. MCP server + CLI, runs locally."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
-keywords = ["whisper", "transcription", "word timestamps", "video editing", "subtitles", "mcp", "claude", "ffmpeg"]
+keywords = ["whisper", "transcription", "word timestamps", "video editing", "subtitles", "mcp", "mcp-server", "claude", "claude-desktop", "claude-code", "ffmpeg", "tiktok", "youtube", "video summary", "speech-to-text"]
 classifiers = [
   "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
   "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Topic :: Multimedia :: Sound/Audio :: Speech",
   "Topic :: Multimedia :: Video :: Non-Linear Editor",
+  "Topic :: Scientific/Engineering :: Artificial Intelligence",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: End Users/Desktop",
+  "Environment :: Console",
 ]
-dependencies = ["pillow>=9.0"]
+# everything the Claude tools need, so `pip install mediasense` / `uvx mediasense mcp` just work
+dependencies = [
+  "pillow>=9.0",
+  "faster-whisper>=1.0",
+  "numpy",
+  "mcp>=1.2",
+  "yt-dlp[default,curl-cffi]>=2024.1",
+  # downloads FFmpeg on first use only when it isn't installed
+  "static-ffmpeg>=2.5",
+]
 
 [project.optional-dependencies]
 whisper = ["faster-whisper>=1.0", "numpy"]
 whisperx = ["whisperx>=3.1"]
 api = ["openai>=1.30"]
 url = ["yt-dlp[default,curl-cffi]>=2024.1"]
-# downloads FFmpeg automatically when it isn't installed (used by the Claude Desktop extension)
 ffmpeg = ["static-ffmpeg>=2.5"]
 # NVIDIA GPU acceleration without installing the CUDA toolkit (~1.5 GB download)
 gpu = ["nvidia-cublas-cu12", "nvidia-cudnn-cu12>=9,<10", "nvidia-cuda-runtime-cu12"]
 mcp = ["mcp>=1.2"]
+# whisper, url, mcp, ffmpeg and all are kept for old install commands; they are now included by default
 all = ["faster-whisper>=1.0", "numpy", "mcp>=1.2", "yt-dlp[default,curl-cffi]>=2024.1"]
 dev = ["pytest>=7", "ruff", "numpy"]
 
@@ -38,13 +55,15 @@ mediasense = "mediasense.cli:main"
 [project.urls]
 Homepage = "https://github.com/joaoestella/mediasense"
 Issues = "https://github.com/joaoestella/mediasense/issues"
+Documentation = "https://github.com/joaoestella/mediasense#readme"
+Privacy = "https://github.com/joaoestella/mediasense/blob/main/PRIVACY.md"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mediasense"]
 
 [tool.hatch.build.targets.wheel.force-include]
 # ship the Claude skill inside the package so `mediasense setup` / `mediasense skill` can install it
-"skill/mediasense/SKILL.md" = "mediasense/_skill/SKILL.md"
+"skills/mediasense/SKILL.md" = "mediasense/_skill/SKILL.md"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

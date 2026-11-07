@@ -5,7 +5,7 @@ from mediasense import setup as st
 from mediasense import skill
 from mediasense.cli import main
 
-REPO_SKILL = Path(__file__).resolve().parents[1] / "skill" / "mediasense" / "SKILL.md"
+REPO_SKILL = Path(__file__).resolve().parents[1] / "skills" / "mediasense" / "SKILL.md"
 
 
 def test_skill_text_is_the_repo_skill():

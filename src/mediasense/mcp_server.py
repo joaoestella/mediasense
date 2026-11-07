@@ -19,7 +19,9 @@ except ImportError:  # SDK 1.x
     from mcp.server.fastmcp import Image  # type: ignore
     from mcp.server.fastmcp.exceptions import ToolError  # type: ignore
 
-from . import api
+from mcp.types import ToolAnnotations
+
+from . import __version__, api
 from .edit import find_phrase
 from .fetch import fetch, is_url
 from .jobs import manager as jobs
@@ -46,7 +48,12 @@ link (TikTok, YouTube, Instagram, X, Vimeo…); it is downloaded once and reused
 - Times accept seconds (75.5) or m:ss (1:15.5). Quote times to the user as m:ss.
 """
 
-_server = _Server("mediasense", instructions=INSTRUCTIONS)
+try:  # report our version to clients (SDK 2.x takes it here)
+    _server = _Server("mediasense", instructions=INSTRUCTIONS, version=__version__)
+except TypeError:  # SDK 1.x
+    _server = _Server("mediasense", instructions=INSTRUCTIONS)
+    if getattr(_server, "_mcp_server", None) is not None:
+        _server._mcp_server.version = __version__
 
 
 class _Tools:
@@ -77,15 +84,42 @@ class _Tools:
 mcp = _Tools()
 
 
-def _path(p: str) -> str:
-    """Local path, or a link (TikTok, YouTube, Instagram…) downloaded on first use."""
+def _ann(title: str, read_only: bool, open_world: bool = False, idempotent: bool | None = None) -> dict:
+    """Tool title + MCP annotations. No mediasense tool deletes or overwrites user files
+    (results always get new names), so destructiveHint is False everywhere."""
+    hints = {"readOnlyHint": read_only, "destructiveHint": False, "openWorldHint": open_world}
+    if idempotent is not None:
+        hints["idempotentHint"] = idempotent
+    return {"title": title, "annotations": ToolAnnotations.model_validate(hints)}
+
+
+_ANN = {
+    "check_job": _ann("Check a running job", True, idempotent=True),
+    "media_info": _ann("Media file info", True, idempotent=True),
+    "transcribe": _ann("Transcribe speech", False, open_world=True, idempotent=True),
+    "read_transcript": _ann("Read a transcript", True, idempotent=True),
+    "search_transcript": _ann("Search a transcript", True, idempotent=True),
+    "plan_edit": _ann("Preview an edit", True, idempotent=True),
+    "render_edit": _ann("Render an edit to a new file", False, idempotent=False),
+    "export_transcript": _ann("Export subtitles or text", False, idempotent=False),
+    "place_audio": _ann("Place audio into a video", False, idempotent=False),
+    "watch_video": _ann("Key frames of a video", False, open_world=True, idempotent=True),
+    "get_frame": _ann("Get one video frame", False, idempotent=True),
+    "understand_media": _ann("Watch and listen to a video or audio", False, open_world=True, idempotent=True),
+}
+
+
+def _path(p: str, download: bool = True) -> str:
+    """Local path, or a link (TikTok, YouTube, Instagram…) downloaded on first use.
+
+    ``download=False`` (read-only tools) only accepts links that were already downloaded."""
     if is_url(p):
-        return str(fetch(p))
+        return str(fetch(p, download=download))
     return str(Path(os.path.expanduser(p.strip().strip('"'))).resolve())
 
 
 def _transcript(path: str) -> Transcript:
-    p = Path(_path(path))
+    p = Path(_path(path, download=False))
     if p.suffix == ".json":
         return Transcript.load(p)
     t = api.load_transcript_for(p, required=True)
@@ -123,7 +157,7 @@ def _job_reply(job):
             "request again.")
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["check_job"])
 def check_job(job_id: str = ""):
     """Get the result of a long-running mediasense job (understand_media, transcribe, render_edit, watch_video).
 
@@ -141,13 +175,13 @@ def check_job(job_id: str = ""):
     return _job_reply(job)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["media_info"])
 def media_info(path: str) -> str:
     """Duration, resolution, fps and which streams (audio/video) a file has."""
-    return json.dumps(probe(_path(path)).to_dict(), indent=2)
+    return json.dumps(probe(_path(path, download=False)).to_dict(), indent=2)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["transcribe"])
 def transcribe(
     path: str,
     language: str | None = None,
@@ -192,7 +226,7 @@ def transcribe(
     return _background("transcribe", key, path, work)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["read_transcript"])
 def read_transcript(path: str, start: str | None = None, end: str | None = None, words: bool = False) -> str:
     """Read a transcript (pass the media path or the .transcript.json).
 
@@ -203,7 +237,7 @@ def read_transcript(path: str, start: str | None = None, end: str | None = None,
                                   parse_time(end) if end else None, words=words, max_chars=20000)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["search_transcript"])
 def search_transcript(path: str, phrase: str) -> str:
     """Find every time a word/phrase is said (case, accent and punctuation insensitive)."""
     hits = find_phrase(_transcript(path), phrase)
@@ -215,7 +249,7 @@ def search_transcript(path: str, phrase: str) -> str:
 
 def _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers, filler_words,
           silences, silence_keep, silence_source, occurrence):
-    src = _path(path)
+    src = _path(path, download=False)
     t = api.load_transcript_for(src)
     plan, info, report = api.plan_edit(
         src, t,
@@ -230,7 +264,7 @@ def _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers, filler
     return src, t, plan, info, report
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["plan_edit"])
 def plan_edit(
     path: str,
     cut_phrases: list[str] | None = None,
@@ -259,7 +293,7 @@ def plan_edit(
     return plan.summary(limit=200) + extra
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["render_edit"])
 def render_edit(
     path: str,
     cut_phrases: list[str] | None = None,
@@ -290,10 +324,10 @@ def render_edit(
         if not plan.cuts:
             return "Nothing to cut." + (f" Not found: {report['not_found']}" if report["not_found"] else "")
         progress(f"rendering {len(plan.cuts)} cut(s)…")
-        d = api.outputs_for(src)
+        d = api.fresh_outputs_for(src)  # never overwrite an earlier result
         written = api.apply_plan(
             src, plan, info, t,
-            output=(_path(output) if output else d["media"]) if media else None,
+            output=(api.unique_path(_path(output)) if output else d["media"]) if media else None,
             edl=d["edl"] if edl else None,
             fcpxml=d["fcpxml"] if fcpxml else None,
             subtitles=d["srt"] if srt else None,
@@ -307,27 +341,27 @@ def render_edit(
     return _background("render_edit", key, path, work)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["export_transcript"])
 def export_transcript(path: str, formats: list[str], words_per_cue: int | None = None) -> str:
     """Write the transcript as files next to the media. formats: srt, vtt, txt, csv, json.
 
     words_per_cue (e.g. 2) makes short captions for vertical video.
     """
     t = _transcript(path)
-    base = Path(_path(path))
+    base = Path(_path(path, download=False))
     if base.name.endswith(".transcript.json"):
         stem_name = base.name[: -len(".transcript.json")]
     else:
         stem_name = base.stem
     out = []
     for f in formats:
-        p = base.with_name(stem_name + "." + f.lstrip("."))
+        p = api.unique_path(base.with_name(stem_name + "." + f.lstrip(".")))
         api.write_subtitles(t, p, words_per_cue=words_per_cue)
         out.append(str(p))
     return "\n".join(out)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["place_audio"])
 def place_audio(
     base: str,
     insert: str,
@@ -344,15 +378,15 @@ def place_audio(
     mode: mix (both play) | duck (original lowered by duck_db) | replace (original muted meanwhile).
     Video is copied without re-encoding. Writes <base>.placed.<ext> unless output is given.
     """
-    b = Path(_path(base))
-    out = _path(output) if output else str(b.with_name(b.stem + ".placed" + b.suffix))
-    _place_audio(str(b), _path(insert), out, at=parse_time(at), mode=mode, volume=volume, duck_db=duck_db,
-                 insert_start=parse_time(insert_from) if insert_from else 0.0,
+    b = Path(_path(base, download=False))
+    out = str(api.unique_path(_path(output) if output else b.with_name(b.stem + ".placed" + b.suffix)))
+    _place_audio(str(b), _path(insert, download=False), out, at=parse_time(at), mode=mode, volume=volume,
+                 duck_db=duck_db, insert_start=parse_time(insert_from) if insert_from else 0.0,
                  insert_end=parse_time(insert_to) if insert_to else None)
     return f"written: {out}"
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["watch_video"])
 def watch_video(path: str, max_frames: int = 24, threshold: float | None = None, include_images: bool = True):
     """Understand a video: key frames at scene changes + what is said during each shot.
 
@@ -384,10 +418,10 @@ def watch_video(path: str, max_frames: int = 24, threshold: float | None = None,
     return _background("watch_video", f"{path}|{max_frames}|{threshold}|{include_images}", path, work)
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["get_frame"])
 def get_frame(path: str, time: str, width: int = 1024):
     """Return the video frame at `time` (e.g. "1:23.4") to look at a moment in detail."""
-    src = _path(path)
+    src = _path(path, download=False)
     t = parse_time(time)
     out_dir = Path(src).with_name(Path(src).stem + ".storyboard")
     out_dir.mkdir(exist_ok=True)
@@ -396,7 +430,7 @@ def get_frame(path: str, time: str, width: int = 1024):
     return [f"frame at {fmt_time(t)}", Image(path=str(dst))]
 
 
-@mcp.tool()
+@mcp.tool(**_ANN["understand_media"])
 def understand_media(
     source: str,
     language: str | None = None,

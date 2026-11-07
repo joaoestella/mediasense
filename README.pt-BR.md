@@ -1,5 +1,10 @@
 # mediasense
 
+[![PyPI](https://img.shields.io/pypi/v/mediasense)](https://pypi.org/project/mediasense/)
+[![Python](https://img.shields.io/pypi/pyversions/mediasense)](https://pypi.org/project/mediasense/)
+[![CI](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/joaoestella/mediasense/blob/main/LICENSE)
+
 **Dá ouvidos e olhos para o Claude.** Cole um link do TikTok, YouTube ou Instagram, ou aponte um arquivo,
 no Claude Code ou no Claude Desktop e peça em português mesmo. O Claude consegue resumir o vídeo,
 explicar o que acontece nele, achar o momento em que algo é dito ou editar.
@@ -70,6 +75,14 @@ Desktop prepara o Python sozinho e o FFmpeg é baixado no primeiro uso. A primei
 alguns minutos. Esse tipo de extensão ainda é novo no Claude Desktop; se não funcionar na sua versão, use
 o instalador acima.
 
+**Como plugin do Claude Code** (ferramentas + skill de uma vez; precisa do [uv](https://docs.astral.sh/uv/)):
+
+```
+/plugin install mediasense --marketplace joaoestella/mediasense
+```
+
+**Outros clientes MCP** (Cursor, VS Code, Windsurf…): use `uvx mediasense mcp` como comando do servidor.
+
 **O que o `mediasense setup` altera:**
 
 - **Claude Desktop:** adiciona só a entrada `mcpServers.mediasense` no `claude_desktop_config.json`.
@@ -135,3 +148,10 @@ O original nunca é alterado: o resultado sai como `<nome>.edited.*` ou `<nome>.
 - **Downloads:** baixar de links segue os termos de cada site. Use só para conteúdo que você pode baixar.
 
 Documentação completa em inglês: [README.md](README.md).
+
+## Privacidade
+
+O mediasense roda inteiro no seu computador: não tem contas, análises de uso nem telemetria, e o autor
+não recebe nenhum dado. Ele só acessa a internet para baixar os links que você pedir, o modelo de fala
+(na primeira vez), o FFmpeg se faltar e, somente se você escolher o backend `openai`, para enviar o
+áudio à API de transcrição configurada. Política completa (em inglês): [PRIVACY.md](PRIVACY.md).
