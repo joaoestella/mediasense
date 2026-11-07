@@ -87,3 +87,31 @@ def test_doctor_uses_full_claude_path_and_survives_errors(monkeypatch, tmp_path)
     checks = {name: (ok, detail) for name, ok, detail in st.doctor()}
     assert seen and seen[0][0].endswith("claude.cmd")
     assert checks["Claude Code"][0] is None and "couldn't check" in checks["Claude Code"][1]
+
+
+def test_windows_store_claude_data_folder_wins(tmp_path, monkeypatch):
+    monkeypatch.delenv("MEDIASENSE_CLAUDE_CONFIG", raising=False)
+    monkeypatch.setattr(st.platform, "system", lambda: "Windows")
+    local, roaming = tmp_path / "Local", tmp_path / "Roaming"
+    (roaming / "Claude").mkdir(parents=True)
+    (local / "Packages" / "Claude_pzs8sxrjxfjjc" / "LocalCache" / "Roaming" / "Claude").mkdir(parents=True)
+    store = local / "Claude-Data" / "claude_pzs8sxrjxfjjc"
+    store.mkdir(parents=True)
+    monkeypatch.setenv("LOCALAPPDATA", str(local))
+    monkeypatch.setenv("APPDATA", str(roaming))
+    assert st.desktop_config_paths() == [store / "claude_desktop_config.json"]
+    # existing servers in the real config are kept
+    cfg = store / "claude_desktop_config.json"
+    cfg.write_text(json.dumps({"mcpServers": {"Roblox_Studio": {"command": "x"},
+                                              "unreal": {"command": "cmd.exe"}}}), encoding="utf-8")
+    st.setup(code=False)
+    assert set(json.loads(cfg.read_text(encoding="utf-8"))["mcpServers"]) == {"Roblox_Studio", "unreal", "mediasense"}
+
+
+def test_windows_classic_install(tmp_path, monkeypatch):
+    monkeypatch.delenv("MEDIASENSE_CLAUDE_CONFIG", raising=False)
+    monkeypatch.setattr(st.platform, "system", lambda: "Windows")
+    (tmp_path / "Roaming" / "Claude").mkdir(parents=True)
+    monkeypatch.setenv("LOCALAPPDATA", str(tmp_path / "Local"))
+    monkeypatch.setenv("APPDATA", str(tmp_path / "Roaming"))
+    assert st.desktop_config_paths() == [tmp_path / "Roaming" / "Claude" / "claude_desktop_config.json"]

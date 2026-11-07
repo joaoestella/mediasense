@@ -71,9 +71,9 @@ appears on PATH in a new terminal. No Git needed.
 ### What `mediasense setup` changes
 
 - **Claude Desktop:** adds one entry, `mcpServers.mediasense`, to `claude_desktop_config.json`
-  (`%APPDATA%\Claude\` – or `%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude\` for the
-  Microsoft Store app – `~/Library/Application Support/Claude/` on macOS, `~/.config/Claude/` on
-  Linux). Everything else in the file is kept, and the previous file is saved next to it as
+  (`%APPDATA%\Claude\` – or `%LOCALAPPDATA%\Claude-Data\claude_…\` for the Microsoft Store app –
+  `~/Library/Application Support/Claude/` on macOS, `~/.config/Claude/` on Linux; Claude Desktop →
+  Settings → Developer → Edit Config opens the one your app uses). Everything else in the file is kept, and the previous file is saved next to it as
   `claude_desktop_config.json.<date>.bak`. If the file isn't valid JSON, setup stops without touching it.
 - **Claude Code** (if installed): runs `claude mcp add --scope user mediasense -- <path>\mediasense mcp`.
 - Nothing else. `mediasense setup -n` shows the exact changes without making them; `--desktop` or

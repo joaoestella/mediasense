@@ -17,7 +17,11 @@ SERVER_NAME = "mediasense"
 
 # ------------------------------------------------------------------ locating things
 def desktop_config_paths() -> list[Path]:
-    """Every Claude Desktop config location that exists on this machine (or the default one)."""
+    """Every Claude Desktop config location that exists on this machine (or the default one).
+
+    The reliable way to check is Claude Desktop → Settings → Developer → Edit Config, which opens
+    the folder the app really reads.
+    """
     override = os.environ.get("MEDIASENSE_CLAUDE_CONFIG")
     if override:
         return [Path(override)]
@@ -26,9 +30,13 @@ def desktop_config_paths() -> list[Path]:
     candidates: list[Path] = []
     if system == "Windows":
         appdata = Path(os.environ.get("APPDATA", home / "AppData" / "Roaming"))
-        candidates.append(appdata / "Claude" / "claude_desktop_config.json")
-        # Microsoft Store (MSIX) build keeps its data in a virtualised folder
         local = Path(os.environ.get("LOCALAPPDATA", home / "AppData" / "Local"))
+        # Microsoft Store (MSIX) builds keep their data in %LOCALAPPDATA%\Claude-Data\claude_<id>
+        # (current) or a virtualised Packages\Claude_<id>\LocalCache\Roaming\Claude (older)
+        store_data = sorted((local / "Claude-Data").glob("claude_*")) if (local / "Claude-Data").is_dir() else []
+        if store_data:
+            return [d / "claude_desktop_config.json" for d in store_data]
+        candidates.append(appdata / "Claude" / "claude_desktop_config.json")
         packages = local / "Packages"
         if packages.is_dir():
             for pkg in packages.glob("Claude_*"):
