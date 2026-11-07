@@ -165,9 +165,19 @@ EDL opens in Premiere, Resolve and Avid; FCPXML in Final Cut Pro and Resolve.
 - **Fillers.** Whisper tends to leave hesitations out; transcribe with `--verbatim` when you want to cut
   them. Real words are protected per language ("um" is an article in Portuguese, so it is never cut
   there). Ambiguous words like "like", "tipo" or "né" are only removed if you list them.
-- **Speed.** A CUDA GPU is used automatically when its libraries are installed; otherwise mediasense
-  falls back to the CPU (roughly real-time with `small`). On a laptop CPU, `base` is faster and less
-  accurate, `medium` is slower and more accurate.
+- **Speed.** Everything works on a plain CPU: short clips take seconds, a few minutes of audio takes
+  about as long as the audio with the default `small` model (`base` is faster, `medium` more accurate).
+  No GPU? `--backend openai` sends the audio to an OpenAI-compatible transcription API instead
+  (fast on any machine, but the audio leaves your computer).
+- **NVIDIA GPU (optional, much faster).** mediasense uses it automatically once the CUDA libraries are
+  present; no CUDA toolkit needed:
+
+  ```bash
+  python -m pipx inject mediasense nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9,<10" nvidia-cuda-runtime-cu12
+  ```
+
+  (≈ 1.5 GB; needs a driver that supports CUDA 12 – `mediasense doctor` checks both). Restart Claude
+  Desktop afterwards.
 - **Word timing** is approximate (0.1–0.2 s). For tighter cuts and speaker labels use
   `--backend whisperx` (`pip install "mediasense[whisperx]"`).
 - Downloading from links follows each site's terms. Use it for content you're allowed to download.

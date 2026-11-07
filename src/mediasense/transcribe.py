@@ -184,6 +184,61 @@ def _suppress_windows_error_dialogs() -> None:
             pass
 
 
+# pip packages that ship the CUDA runtime pieces CTranslate2 needs (no full CUDA install required):
+#   pip install nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9,<10"      (or the [gpu] extra)
+_NVIDIA_PKGS = ("cublas", "cudnn", "cuda_runtime", "cuda_nvrtc")
+_nvidia_registered = False
+
+
+def nvidia_lib_dirs() -> list[Path]:
+    """Folders with CUDA DLLs/.so files from the nvidia-* pip packages, if installed."""
+    try:
+        import importlib.util
+
+        spec = importlib.util.find_spec("nvidia")
+    except (ImportError, ValueError):
+        return []
+    if spec is None or not spec.submodule_search_locations:
+        return []
+    sub = "bin" if platform.system() == "Windows" else "lib"
+    dirs = []
+    for base in spec.submodule_search_locations:
+        for pkg in _NVIDIA_PKGS:
+            d = Path(base) / pkg / sub
+            if d.is_dir():
+                dirs.append(d)
+    return dirs
+
+
+def register_nvidia_libs() -> list[Path]:
+    """Make the pip-installed CUDA libraries findable by CTranslate2 in this process."""
+    global _nvidia_registered
+    dirs = nvidia_lib_dirs()
+    if _nvidia_registered or not dirs:
+        return dirs
+    _nvidia_registered = True
+    if platform.system() == "Windows":
+        for d in dirs:
+            try:
+                os.add_dll_directory(str(d))
+            except (OSError, AttributeError):
+                pass
+        # plain LoadLibrary (used by CUDA to load its own pieces) searches PATH, not add_dll_directory
+        os.environ["PATH"] = os.pathsep.join([*(str(d) for d in dirs), os.environ.get("PATH", "")])
+    else:
+        import ctypes
+
+        # LD_LIBRARY_PATH can't change after start-up; preloading by full path makes later
+        # dlopen("libcublas.so.12") calls resolve to the already-loaded copies
+        for d in dirs:
+            for lib in sorted(d.glob("lib*.so*")):
+                try:
+                    ctypes.CDLL(str(lib), mode=ctypes.RTLD_GLOBAL)
+                except OSError:
+                    pass
+    return dirs
+
+
 def missing_cuda_libs() -> list[str]:
     """CUDA libraries CTranslate2 needs that can't be loaded on this machine ([] = all fine)."""
     names = _CUDA_LIBS.get(platform.system(), ())
@@ -192,6 +247,7 @@ def missing_cuda_libs() -> list[str]:
     import ctypes
 
     _suppress_windows_error_dialogs()
+    register_nvidia_libs()
     missing = []
     for name in names:
         try:
@@ -285,6 +341,8 @@ def _faster_whisper(wav, model_name, language, device, prompt, say, hotwords=Non
 
 def _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say,
                         hotwords=None) -> Transcript:
+    if dev == "cuda":
+        register_nvidia_libs()
     say(f"loading model '{model_name}' on {dev} (first run downloads it)…")
     m = WhisperModel(model_name, device=dev, compute_type=compute)
     say(f"transcribing {len(audio) / 16000:.1f}s of audio…")

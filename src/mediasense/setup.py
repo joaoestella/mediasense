@@ -13,6 +13,8 @@ from datetime import datetime
 from pathlib import Path
 
 SERVER_NAME = "mediasense"
+GPU_INSTALL_HINT = ('python -m pipx inject mediasense nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9,<10" '
+                    'nvidia-cuda-runtime-cu12  (~1.5 GB), then restart Claude')
 
 
 # ------------------------------------------------------------------ locating things
@@ -217,6 +219,21 @@ def doctor() -> list[tuple[str, bool | None, str]]:
     return out
 
 
+def _driver_cuda_version() -> float | None:
+    """Highest CUDA version the installed NVIDIA driver supports (from nvidia-smi), if known."""
+    import re
+
+    smi = shutil.which("nvidia-smi")
+    if not smi:
+        return None
+    try:
+        out = subprocess.run([smi], capture_output=True, text=True, timeout=20).stdout
+    except (OSError, subprocess.SubprocessError):
+        return None
+    m = re.search(r"CUDA Version:\s*([\d.]+)", out)
+    return float(m.group(1)) if m else None
+
+
 def _gpu_check() -> tuple[str, bool | None, str]:
     try:
         import ctranslate2  # type: ignore
@@ -228,9 +245,14 @@ def _gpu_check() -> tuple[str, bool | None, str]:
         n = 0
     if not n:
         return ("GPU", None, "no NVIDIA GPU – using CPU")
+    driver_cuda = _driver_cuda_version()
+    if driver_cuda is not None and driver_cuda < 12.0:
+        return ("GPU", None, f"NVIDIA driver supports CUDA {driver_cuda:g}; 12+ is needed – update the driver "
+                             "(nvidia.com/drivers). Using CPU for now")
     from .transcribe import missing_cuda_libs
 
     missing = missing_cuda_libs()
     if missing:
-        return ("GPU", None, f"NVIDIA GPU found, but {', '.join(missing)} missing – using CPU (slower)")
+        return ("GPU", None, f"NVIDIA GPU found, but {', '.join(missing)} missing – using CPU (slower). "
+                             f"To use the GPU: {GPU_INSTALL_HINT}")
     return ("GPU", True, f"{n} CUDA device(s)")

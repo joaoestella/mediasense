@@ -189,3 +189,51 @@ def test_missing_cuda_libs_reports_unloadable(monkeypatch):
 
     monkeypatch.setattr(ctypes, "CDLL", fake_cdll)
     assert tr_mod.missing_cuda_libs() == ["libcudnn_ops.so.9"]
+
+
+def _fake_nvidia(tmp_path, sub):
+    for pkg in ("cublas", "cudnn"):
+        (tmp_path / "nvidia" / pkg / sub).mkdir(parents=True)
+        (tmp_path / "nvidia" / pkg / sub / f"lib{pkg}.so.12").write_bytes(b"")
+
+
+def test_nvidia_lib_dirs_from_pip_packages(tmp_path, monkeypatch):
+    _fake_nvidia(tmp_path, "lib")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(tr_mod.platform, "system", lambda: "Linux")
+    import importlib
+
+    importlib.invalidate_caches()
+    dirs = tr_mod.nvidia_lib_dirs()
+    assert [d.parent.name for d in dirs] == ["cublas", "cudnn"]
+
+
+def test_register_nvidia_libs_on_windows_extends_path(tmp_path, monkeypatch):
+    _fake_nvidia(tmp_path, "bin")
+    monkeypatch.syspath_prepend(str(tmp_path))
+    monkeypatch.setattr(tr_mod.platform, "system", lambda: "Windows")
+    monkeypatch.setattr(tr_mod, "_nvidia_registered", False)
+    added = []
+    monkeypatch.setattr(tr_mod.os, "add_dll_directory", lambda p: added.append(p), raising=False)
+    monkeypatch.setenv("PATH", "C:\\Windows")
+    import importlib
+
+    importlib.invalidate_caches()
+    dirs = tr_mod.register_nvidia_libs()
+    assert len(dirs) == 2 and len(added) == 2
+    assert tr_mod.os.environ["PATH"].startswith(str(dirs[0]))
+    assert tr_mod.os.environ["PATH"].endswith("C:\\Windows")
+
+
+def test_doctor_flags_old_driver(monkeypatch):
+    import sys as _sys
+    import types as _types
+
+    from mediasense import setup as st
+
+    ct2 = _types.ModuleType("ctranslate2")
+    ct2.get_cuda_device_count = lambda: 1
+    monkeypatch.setitem(_sys.modules, "ctranslate2", ct2)
+    monkeypatch.setattr(st, "_driver_cuda_version", lambda: 11.4)
+    name, ok, detail = st._gpu_check()
+    assert ok is None and "update the driver" in detail

@@ -117,7 +117,14 @@ O original nunca é alterado: o resultado sai como `<nome>.edited.*` ou `<nome>.
   Claude, isso é feito automaticamente quando ele consegue deduzir os nomes do título ou da tela.
 - **Vícios de fala:** use `--verbatim` para mantê-los na transcrição e poder cortar. Palavras reais são
   protegidas por idioma: "um" é artigo em português e nunca é cortado.
-- **Velocidade:** com placa NVIDIA e as bibliotecas CUDA instaladas, usa a GPU; senão, vai pela CPU.
+- **Velocidade:** tudo funciona só com a CPU. Vídeos curtos ficam prontos em segundos, e alguns minutos
+  de áudio levam mais ou menos o mesmo tempo do áudio. Sem placa de vídeo, `--backend openai` manda o
+  áudio para uma API de transcrição: é rápido em qualquer PC, mas o áudio sai do seu computador.
+- **Placa NVIDIA (opcional, bem mais rápido):** o mediasense usa a placa sozinho depois que as
+  bibliotecas CUDA estiverem instaladas, sem precisar instalar o CUDA inteiro:
+  `python -m pipx inject mediasense nvidia-cublas-cu12 "nvidia-cudnn-cu12>=9,<10" nvidia-cuda-runtime-cu12`
+  (uns 1,5 GB; precisa de um driver com suporte a CUDA 12, e o `mediasense doctor` confere). Depois,
+  reinicie o Claude Desktop.
 - **Downloads:** baixar de links segue os termos de cada site. Use só para conteúdo que você pode baixar.
 
 Documentação completa em inglês: [README.md](README.md).
