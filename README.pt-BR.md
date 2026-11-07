@@ -5,11 +5,13 @@
 [![CI](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/joaoestella/mediasense/blob/main/LICENSE)
 
-**Dá ouvidos e olhos para o Claude.** Cole um link do TikTok, YouTube ou Instagram, ou aponte um arquivo,
-no Claude Code ou no Claude Desktop e peça em português mesmo. O Claude consegue resumir o vídeo,
-explicar o que acontece nele, achar o momento em que algo é dito ou editar.
+**Dá ouvidos e olhos para o Claude.** Sozinho, o Claude não escuta áudios nem assiste vídeos; com o
+mediasense, consegue. Aponte um áudio do WhatsApp, podcast, gravação ou reunião, ou cole um link do
+TikTok, YouTube ou Instagram, no Claude Code ou no Claude Desktop e peça em português mesmo. O Claude
+consegue transcrever o áudio, resumir, explicar o que acontece, achar o momento em que algo é dito ou editar.
 
 ```text
+você: o que diz esse áudio? ~/Downloads/audio-da-maria.opus
 você: resume esse vídeo https://www.tiktok.com/@alguem/video/7350…
 você: o que ele mostra aos 0:30? que ferramenta é essa?
 você: limpa ~/Desktop/podcast.m4a, tira os "é..." e as pausas longas

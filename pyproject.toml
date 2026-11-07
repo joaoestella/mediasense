@@ -4,12 +4,12 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mediasense"
-version = "0.5.0"
-description = "Give Claude ears and eyes: understand, summarize and edit audio/video files or links (TikTok, YouTube…) with word-level timestamps. MCP server + CLI, runs locally."
+version = "0.5.1"
+description = "Let Claude listen to audio and watch video: transcribe voice messages, podcasts and recordings with word timestamps (~99 languages), and summarize or edit TikTok/YouTube links. MCP server + CLI, runs locally."
 readme = "README.md"
 license = { text = "MIT" }
 requires-python = ">=3.10"
-keywords = ["whisper", "transcription", "word timestamps", "video editing", "subtitles", "mcp", "mcp-server", "claude", "claude-desktop", "claude-code", "ffmpeg", "tiktok", "youtube", "video summary", "speech-to-text"]
+keywords = ["listen to audio", "audio transcription", "voice messages", "podcast", "whisper", "transcription", "word timestamps", "video editing", "subtitles", "mcp", "mcp-server", "claude", "claude-desktop", "claude-code", "ffmpeg", "tiktok", "youtube", "video summary", "speech-to-text"]
 classifiers = [
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",

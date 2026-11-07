@@ -7,11 +7,13 @@
 [![CI](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml/badge.svg)](https://github.com/joaoestella/mediasense/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/joaoestella/mediasense/blob/main/LICENSE)
 
-**Give Claude ears and eyes.** Paste a TikTok, YouTube or Instagram link (or point at a file) in Claude
-Code or Claude Desktop and ask in plain language. Claude can then summarize the video, explain what
-happens in it, find the moment something is said, or edit it.
+**Give Claude ears and eyes.** Claude can't listen to audio or watch videos on its own; with mediasense
+it can. Point at a voice message, podcast, recording or meeting, or paste a TikTok, YouTube or Instagram
+link, in Claude Code or Claude Desktop and ask in plain language. Claude can then transcribe it,
+summarize it, explain what happens, find the moment something is said, or edit it.
 
 ```text
+you: what does this voice message say? ~/Downloads/audio-from-maria.opus
 you: summarize this https://www.tiktok.com/@someone/video/7350…
 you: what does he show at 0:30? and what tool is he talking about?
 you: clean up ~/Desktop/podcast.m4a — remove the "um"s and long pauses

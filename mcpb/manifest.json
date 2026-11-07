@@ -3,8 +3,8 @@
   "name": "mediasense",
   "display_name": "mediasense",
   "version": "0.0.0",
-  "description": "Watch and listen to videos and audio: summarize, explain, transcribe and edit TikTok, YouTube or Instagram links and local files.",
-  "long_description": "mediasense gives Claude ears and eyes for media. Paste a TikTok, YouTube, Instagram, X or Vimeo link (or point at a file) and ask Claude to summarize it, explain what happens, find when something is said, cut out filler words and pauses, or make subtitles. Everything runs on your computer: the video is downloaded, the speech is transcribed in ~99 languages with a timestamp for every word, and key frames are picked at scene changes. The first use downloads the speech model (~500 MB) and, if needed, FFmpeg (~70 MB). Tip: also add the mediasense skill (Settings → Skills) so Claude uses it for every video link.",
+  "description": "Let Claude listen to audio and watch video: transcribe voice messages, podcasts and recordings, and summarize or edit TikTok, YouTube or Instagram links.",
+  "long_description": "mediasense gives Claude ears and eyes for media: voice messages, podcasts, recordings, meetings and videos. Point at an audio file, or paste a TikTok, YouTube, Instagram, X or Vimeo link (or point at a file) and ask Claude to summarize it, explain what happens, find when something is said, cut out filler words and pauses, or make subtitles. Everything runs on your computer: the video is downloaded, the speech is transcribed in ~99 languages with a timestamp for every word, and key frames are picked at scene changes. The first use downloads the speech model (~500 MB) and, if needed, FFmpeg (~70 MB). Tip: also add the mediasense skill (Settings → Skills) so Claude uses it for every video link.",
   "author": {
     "name": "joaoestella",
     "url": "https://github.com/joaoestella"
@@ -26,7 +26,11 @@
     "tiktok",
     "youtube",
     "subtitles",
-    "editing"
+    "editing",
+    "listen to audio",
+    "voice messages",
+    "podcast",
+    "speech-to-text"
   ],
   "server": {
     "type": "uv",

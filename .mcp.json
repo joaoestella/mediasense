@@ -2,7 +2,7 @@
   "mcpServers": {
     "mediasense": {
       "command": "uvx",
-      "args": ["mediasense==0.5.0", "mcp"]
+      "args": ["mediasense==0.5.1", "mcp"]
     }
   }
 }

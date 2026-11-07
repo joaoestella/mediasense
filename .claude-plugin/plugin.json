@@ -1,7 +1,7 @@
 {
   "name": "mediasense",
-  "version": "0.5.0",
-  "description": "Watch and listen to videos and audio: summarize, explain, transcribe and edit TikTok, YouTube or Instagram links and local files. Runs locally.",
+  "version": "0.5.1",
+  "description": "Let Claude listen to audio and watch video: transcribe voice messages, podcasts, recordings and meetings, and summarize or edit TikTok, YouTube and Instagram videos. Runs locally.",
   "author": {
     "name": "joaoestella",
     "url": "https://github.com/joaoestella"
@@ -14,9 +14,13 @@
   "termsOfServiceUrl": "https://github.com/joaoestella/mediasense/blob/main/LICENSE",
   "license": "MIT",
   "keywords": [
-    "video",
     "audio",
+    "video",
+    "listen to audio",
+    "voice messages",
+    "podcast",
     "transcription",
+    "speech-to-text",
     "whisper",
     "tiktok",
     "youtube",

@@ -9,7 +9,7 @@
     {
       "name": "mediasense",
       "source": "./",
-      "description": "Watch and listen to videos and audio: summarize, explain, transcribe and edit TikTok, YouTube or Instagram links and local files. Runs locally."
+      "description": "Let Claude listen to audio and watch video: transcribe voice messages, podcasts, recordings and meetings, and summarize or edit TikTok, YouTube and Instagram videos. Runs locally."
     }
   ]
 }
