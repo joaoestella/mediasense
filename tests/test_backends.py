@@ -18,8 +18,11 @@ def fake_faster_whisper(monkeypatch):
         def __init__(self, name, device, compute_type):
             calls["init"] = (name, device, compute_type)
 
-        def transcribe(self, path, **kw):
+        def transcribe(self, audio, **kw):
             calls["kw"] = kw
+            calls["audio"] = audio
+            if calls.get("fail_on") == calls["init"][1]:
+                raise RuntimeError("Library cudnn_ops64_9.dll is not found or cannot be loaded")
             segs = [
                 NS(start=0.0, end=1.0, text=" Olá pessoal",
                    words=[NS(word=" Olá", start=0.05, end=0.45, probability=0.98),
@@ -47,6 +50,27 @@ def test_faster_whisper_adapter(fake_faster_whisper, audio_file):
     assert kw["initial_prompt"] == tr_mod.VERBATIM_PROMPTS["pt"]
     assert fake_faster_whisper["init"] == ("small", "cpu", "int8")
     assert abs(t.duration - 6.0) < 0.1
+    # audio is handed over already decoded (no PyAV), 16 kHz mono float32
+    audio = fake_faster_whisper["audio"]
+    assert str(audio.dtype) == "float32" and abs(len(audio) / 16000 - 6.0) < 0.05
+    assert 0.4 < float(abs(audio).max()) <= 1.0
+
+
+def test_gpu_failure_falls_back_to_cpu(fake_faster_whisper, audio_file, monkeypatch):
+    monkeypatch.setattr(tr_mod, "_resolve_device", lambda d: ("cuda", "float16"))
+    fake_faster_whisper["fail_on"] = "cuda"
+    messages = []
+    t = transcribe(audio_file, device="auto", progress=messages.append)
+    assert fake_faster_whisper["init"] == ("small", "cpu", "int8")
+    assert any("retrying on CPU" in m for m in messages)
+    assert len(t.words()) == 3
+
+
+def test_explicit_gpu_failure_is_not_hidden(fake_faster_whisper, audio_file, monkeypatch):
+    monkeypatch.setattr(tr_mod, "_resolve_device", lambda d: ("cuda", "float16"))
+    fake_faster_whisper["fail_on"] = "cuda"
+    with pytest.raises(RuntimeError, match="cudnn"):
+        transcribe(audio_file, device="cuda")
 
 
 def test_missing_backend_message(monkeypatch, audio_file):

@@ -21,6 +21,10 @@ from .models import Segment, Transcript, Word, fill_missing_word_times, join_wor
 
 BACKENDS = ("faster-whisper", "whisperx", "openai")
 
+# Windows without Developer Mode can't create symlinks; the HF cache still works,
+# the warning just confuses people.
+os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+
 # Whisper tends to "clean up" speech and drop hesitations. Priming it with a
 # disfluent prompt in the right language makes it keep them, which is what you
 # want when the goal is to cut them out.
@@ -96,17 +100,53 @@ def _resolve_device(device: str) -> tuple[str, str]:
     return device, ("float16" if device == "cuda" else "int8")
 
 
+def load_wav_array(wav: str | Path):
+    """16 kHz mono PCM WAV (written by our ffmpeg step) -> float32 numpy array.
+
+    Passing an array to faster-whisper skips its own PyAV-based decoder, which
+    breaks whenever PyAV changes its API (newer releases dropped
+    ``metadata_errors``). FFmpeg already did the decoding.
+    """
+    import wave
+
+    import numpy as np
+
+    with wave.open(str(wav), "rb") as fh:
+        if fh.getsampwidth() != 2:
+            raise TranscriptionError("expected 16-bit PCM audio")
+        frames = fh.readframes(fh.getnframes())
+        channels = fh.getnchannels()
+    audio = np.frombuffer(frames, dtype=np.int16).astype(np.float32) / 32768.0
+    if channels > 1:
+        audio = audio.reshape(-1, channels).mean(axis=1)
+    return audio
+
+
+_GPU_ERROR_HINTS = ("cuda", "cudnn", "cublas", "out of memory", "no kernel image", "libcu")
+
+
 def _faster_whisper(wav, model_name, language, device, prompt, say) -> Transcript:
     try:
         from faster_whisper import WhisperModel  # type: ignore
     except ImportError as e:
         raise _missing("faster-whisper", "whisper") from e
+    audio = load_wav_array(wav)
     dev, compute = _resolve_device(device)
+    try:
+        return _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say)
+    except Exception as e:  # GPU present but CUDA/cuDNN libraries missing or broken
+        if device != "auto" or dev != "cuda" or not any(h in str(e).lower() for h in _GPU_ERROR_HINTS):
+            raise
+        say(f"GPU failed ({str(e).splitlines()[0][:120]}); retrying on CPU…")
+        return _faster_whisper_run(WhisperModel, audio, model_name, "cpu", "int8", language, prompt, say)
+
+
+def _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say) -> Transcript:
     say(f"loading model '{model_name}' on {dev} (first run downloads it)…")
     m = WhisperModel(model_name, device=dev, compute_type=compute)
     say("transcribing…")
     segs_iter, info = m.transcribe(
-        str(wav),
+        audio,
         language=language,
         word_timestamps=True,
         vad_filter=True,
