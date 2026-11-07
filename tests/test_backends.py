@@ -57,7 +57,7 @@ def test_faster_whisper_adapter(fake_faster_whisper, audio_file):
 
 
 def test_gpu_failure_falls_back_to_cpu(fake_faster_whisper, audio_file, monkeypatch):
-    monkeypatch.setattr(tr_mod, "_resolve_device", lambda d: ("cuda", "float16"))
+    monkeypatch.setattr(tr_mod, "_resolve_device", lambda d, say=None: ("cuda", "float16"))
     fake_faster_whisper["fail_on"] = "cuda"
     messages = []
     t = transcribe(audio_file, device="auto", progress=messages.append)
@@ -67,7 +67,7 @@ def test_gpu_failure_falls_back_to_cpu(fake_faster_whisper, audio_file, monkeypa
 
 
 def test_explicit_gpu_failure_is_not_hidden(fake_faster_whisper, audio_file, monkeypatch):
-    monkeypatch.setattr(tr_mod, "_resolve_device", lambda d: ("cuda", "float16"))
+    monkeypatch.setattr(tr_mod, "_resolve_device", lambda d, say=None: ("cuda", "float16"))
     fake_faster_whisper["fail_on"] = "cuda"
     with pytest.raises(RuntimeError, match="cudnn"):
         transcribe(audio_file, device="cuda")
@@ -162,3 +162,30 @@ def test_drop_subtitle_credits():
     keep = Transcript(segments=[seg("ativa as legendas aí embaixo e me segue", 1.0),
                                 seg("obrigado por assistir", 5.0)])
     assert drop_subtitle_credits(keep) == 0 and len(keep.segments) == 2
+
+
+def test_auto_device_skips_gpu_without_cuda_libs(monkeypatch):
+    fake_ct2 = types.ModuleType("ctranslate2")
+    fake_ct2.get_cuda_device_count = lambda: 1
+    monkeypatch.setitem(sys.modules, "ctranslate2", fake_ct2)
+    monkeypatch.setattr(tr_mod, "missing_cuda_libs", lambda: ["cublas64_12.dll"])
+    msgs = []
+    assert tr_mod._resolve_device("auto", msgs.append) == ("cpu", "int8")
+    assert "cublas64_12.dll missing" in msgs[0]
+    monkeypatch.setattr(tr_mod, "missing_cuda_libs", lambda: [])
+    assert tr_mod._resolve_device("auto") == ("cuda", "float16")
+    assert tr_mod._resolve_device("cuda") == ("cuda", "float16")  # explicit choice is respected
+
+
+def test_missing_cuda_libs_reports_unloadable(monkeypatch):
+    import ctypes
+
+    monkeypatch.setattr(tr_mod.platform, "system", lambda: "Linux")
+
+    def fake_cdll(name):
+        if "cudnn" in name:
+            raise OSError("not found")
+        return object()
+
+    monkeypatch.setattr(ctypes, "CDLL", fake_cdll)
+    assert tr_mod.missing_cuda_libs() == ["libcudnn_ops.so.9"]

@@ -228,15 +228,9 @@ def _gpu_check() -> tuple[str, bool | None, str]:
         n = 0
     if not n:
         return ("GPU", None, "no NVIDIA GPU – using CPU")
-    if platform.system() == "Windows":
-        import ctypes
+    from .transcribe import missing_cuda_libs
 
-        missing = []
-        for dll in ("cublas64_12.dll", "cudnn_ops64_9.dll"):
-            try:
-                ctypes.WinDLL(dll)
-            except OSError:
-                missing.append(dll)
-        if missing:
-            return ("GPU", None, f"NVIDIA GPU found, but {', '.join(missing)} missing – using CPU (slower)")
+    missing = missing_cuda_libs()
+    if missing:
+        return ("GPU", None, f"NVIDIA GPU found, but {', '.join(missing)} missing – using CPU (slower)")
     return ("GPU", True, f"{n} CUDA device(s)")

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import os
+import platform
 import re
 import tempfile
 from collections.abc import Callable
@@ -163,8 +164,49 @@ def drop_repetition_loops(tr: Transcript, min_duration: float = 0.02) -> int:
 
 
 # ---------------------------------------------------------------- backends
-def _resolve_device(device: str) -> tuple[str, str]:
-    """-> (device, compute_type) for CTranslate2-based models."""
+# CTranslate2 (faster-whisper) 4.x needs CUDA 12 cuBLAS and cuDNN 9 at run time.
+_CUDA_LIBS = {
+    "Windows": ("cublas64_12.dll", "cudnn_ops64_9.dll"),
+    "Linux": ("libcublas.so.12", "libcudnn_ops.so.9"),
+}
+
+
+def _suppress_windows_error_dialogs() -> None:
+    """A missing DLL can make Windows show a modal 'not found' box; when mediasense runs inside
+    Claude Desktop nobody sees it and the transcription hangs. Fail with an error instead."""
+    if platform.system() == "Windows":
+        try:
+            import ctypes
+
+            SEM_FAILCRITICALERRORS, SEM_NOOPENFILEERRORBOX = 0x0001, 0x8000
+            ctypes.windll.kernel32.SetErrorMode(SEM_FAILCRITICALERRORS | SEM_NOOPENFILEERRORBOX)
+        except Exception:
+            pass
+
+
+def missing_cuda_libs() -> list[str]:
+    """CUDA libraries CTranslate2 needs that can't be loaded on this machine ([] = all fine)."""
+    names = _CUDA_LIBS.get(platform.system(), ())
+    if not names:
+        return []
+    import ctypes
+
+    _suppress_windows_error_dialogs()
+    missing = []
+    for name in names:
+        try:
+            (ctypes.WinDLL if platform.system() == "Windows" else ctypes.CDLL)(name)
+        except OSError:
+            missing.append(name)
+    return missing
+
+
+def _resolve_device(device: str, say=None) -> tuple[str, str]:
+    """-> (device, compute_type) for CTranslate2-based models.
+
+    "auto" only picks the GPU when its CUDA libraries really load; trying and failing later can
+    hang (Windows) or waste minutes.
+    """
     if device == "auto":
         try:
             import ctranslate2  # type: ignore
@@ -172,6 +214,12 @@ def _resolve_device(device: str) -> tuple[str, str]:
             device = "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
         except Exception:
             device = "cpu"
+        if device == "cuda":
+            missing = missing_cuda_libs()
+            if missing:
+                if say:
+                    say(f"NVIDIA GPU found but {', '.join(missing)} missing – using the CPU")
+                device = "cpu"
     return device, ("float16" if device == "cuda" else "int8")
 
 
@@ -225,7 +273,7 @@ def _faster_whisper(wav, model_name, language, device, prompt, say, hotwords=Non
     except ImportError as e:
         raise _missing("faster-whisper", "whisper") from e
     audio = load_wav_array(wav)
-    dev, compute = _resolve_device(device)
+    dev, compute = _resolve_device(device, say)
     try:
         return _faster_whisper_run(WhisperModel, audio, model_name, dev, compute, language, prompt, say, hotwords)
     except Exception as e:  # GPU present but CUDA/cuDNN libraries missing or broken
