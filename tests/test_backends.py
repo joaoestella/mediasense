@@ -143,3 +143,22 @@ def test_drop_repetition_loops():
     ahs = [Word(" ah", 0, 0.3), Word(" ah", 0.4, 0.7), Word(" ah", 0.8, 1.1)]
     real = Transcript(segments=[Segment(0, 2, "x", ahs)])
     assert drop_repetition_loops(real) == 0
+
+
+def test_drop_subtitle_credits():
+    from mediasense.models import Segment, Transcript, Word
+    from mediasense.transcribe import drop_subtitle_credits
+
+    def seg(text, start):
+        return Segment(start, start + 1, text, [Word(" " + w, start, start + 0.2) for w in text.split()])
+
+    tr = Transcript(segments=[seg("por isso que eu comprei só 100 ações agora", 57.0),
+                              seg("Legendas pela comunidade de Amara.org", 59.4),
+                              seg("Subtitles by the Amara.org community", 60.5),
+                              seg("Sous-titres réalisés par la communauté d'Amara.org", 61.5)])
+    assert drop_subtitle_credits(tr) > 0
+    assert [s.text for s in tr.segments] == ["por isso que eu comprei só 100 ações agora"]
+    # real speech that merely mentions subtitles stays
+    keep = Transcript(segments=[seg("ativa as legendas aí embaixo e me segue", 1.0),
+                                seg("obrigado por assistir", 5.0)])
+    assert drop_subtitle_credits(keep) == 0 and len(keep.segments) == 2

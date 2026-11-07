@@ -194,7 +194,7 @@ def test_mcp_understand_and_prompts(video_file, transcript_file):
 
     from mediasense import mcp_server as s
 
-    out = s.understand(str(video_file))
+    out = s.understand_media(str(video_file))
     assert "## Shots" in out[0] and len(out) >= 2  # text + contact sheet image
     prompts = {p.name for p in asyncio.run(s._server.list_prompts())}
     assert {"summarize", "explain_video", "clean_up", "subtitles"} <= prompts

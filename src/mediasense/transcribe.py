@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import math
 import os
+import re
 import tempfile
 from collections.abc import Callable
 from pathlib import Path
@@ -95,6 +96,9 @@ def transcribe(
         else:
             tr = _openai(wav, model, language, prompt, say)
 
+    credits = drop_subtitle_credits(tr)
+    if credits:
+        say("removed a subtitle-credit line the model imagined (e.g. 'Amara.org')")
     removed = drop_repetition_loops(tr)
     if removed:
         say(f"warning: dropped {removed} zero-length repeated word(s) — the model got stuck in a loop. "
@@ -103,6 +107,30 @@ def transcribe(
     tr.source = str(path)
     tr.backend = backend
     return tr
+
+
+# Whisper was trained on subtitles from the web and sometimes "hears" their credit lines in silence or
+# music, most often at the very end. Nobody says these, so whole segments made of them are dropped.
+_SUBTITLE_CREDITS = re.compile(
+    r"(amara\.?\s*org|legendas? (pela|por|da) comunidade|legendado por|legendas? por|tradu[cç][aã]o e legendas"
+    r"|subtitles? (by|from)|subtitled by|captions? by|transcri(ption|bed) by|sous-titr(es|age) (r[ée]alis[ée]s? )?par"
+    r"|untertitel (im auftrag|von|der)|subt[ií]tulos? (realizados? )?por|sottotitoli (creati )?da"
+    r"|字幕|zdf (für|fur) funk)",
+    re.IGNORECASE,
+)
+
+
+def drop_subtitle_credits(tr: Transcript) -> int:
+    """Remove hallucinated subtitle credits ("Legendas pela comunidade de Amara.org"). Returns words removed."""
+    removed = 0
+    kept = []
+    for seg in tr.segments:
+        if _SUBTITLE_CREDITS.search(seg.text) and len(seg.text) < 140:
+            removed += len(seg.words) or 1
+            continue
+        kept.append(seg)
+    tr.segments = kept
+    return removed
 
 
 def drop_repetition_loops(tr: Transcript, min_duration: float = 0.02) -> int:

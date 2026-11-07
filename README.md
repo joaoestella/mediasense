@@ -101,7 +101,7 @@ The server adds ready-made prompts. In Claude Code they appear as `/mcp__mediase
 
 | Tool | What it does |
 |---|---|
-| `understand` | **one call**: download link, transcribe, key frames + speech per shot, post title/description |
+| `understand_media` | **one call**: download link, transcribe, key frames + speech per shot, post title/description |
 | `transcribe` | speech → `<file>.transcript.json` with word timestamps; `vocabulary` fixes brand names |
 | `read_transcript`, `search_transcript` | read a time range or find every time a phrase is said |
 | `plan_edit`, `render_edit` | cut phrases, passages, fillers, silences or ranges; preview, then render |

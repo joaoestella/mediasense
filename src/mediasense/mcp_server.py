@@ -32,11 +32,13 @@ mediasense gives you ears and eyes for audio and video on the user's machine: tr
 for every word, key frames of videos, and editing by text. Every `path`/`source` argument also accepts a
 link (TikTok, YouTube, Instagram, X, Vimeo…); it is downloaded once and reused.
 
-- To summarize / explain / answer questions about a file or link: call understand(source). It returns the
+- ALWAYS use these tools for video/audio links (TikTok, YouTube, Instagram, X, Vimeo…) instead of fetching the
+  page or opening a browser: those sites block bots, and the page has no transcript anyway.
+- To summarize / explain / answer questions about a file or link: call understand_media(source). It returns the
   transcript, shot list and contact sheets (key frames labelled with shot number and time) in one go.
 - To edit: transcribe (verbatim=true if removing fillers) → plan_edit → show the user the cut list and get
   an OK → render_edit. Outputs are new files (<name>.edited.<ext>); the original is never touched.
-- To place a clip: find the moment with search_transcript / understand, then place_audio.
+- To place a clip: find the moment with search_transcript / understand_media, then place_audio.
 - Pass `vocabulary` with brand names and jargon you can infer (title, screen text, the user's words) so
   they are spelled correctly. Fix remaining obvious mis-hearings when you report back.
 - Long work (new videos, the first run that downloads the speech model) answers "STILL WORKING — job …".
@@ -123,7 +125,7 @@ def _job_reply(job):
 
 @mcp.tool()
 def check_job(job_id: str = ""):
-    """Get the result of a long-running mediasense job (understand, transcribe, render_edit, watch_video).
+    """Get the result of a long-running mediasense job (understand_media, transcribe, render_edit, watch_video).
 
     Waits up to ~30s; returns the finished result, or the progress so far plus the same job_id to check again.
     Without job_id, lists jobs that are still running.
@@ -395,7 +397,7 @@ def get_frame(path: str, time: str, width: int = 1024):
 
 
 @mcp.tool()
-def understand(
+def understand_media(
     source: str,
     language: str | None = None,
     vocabulary: list[str] | None = None,
@@ -404,13 +406,15 @@ def understand(
     include_images: bool = True,
     force: bool = False,
 ):
-    """START HERE to summarize, explain or answer questions about an audio/video file or a link
-    (TikTok, YouTube, Instagram, X, Vimeo…). One call: downloads links, transcribes with timestamps
-    (reusing earlier work), and for videos returns key-frame contact sheets + what is said per shot,
-    plus the post's title/description when it came from a link.
+    """Watch and listen to a video or audio – a TikTok, YouTube, Instagram, X or Vimeo link, or a file –
+    to summarize it, explain it or answer questions about it. Use this instead of opening the link in a
+    browser or fetching the page (those sites block that). One call downloads the link, transcribes the
+    speech with timestamps and returns key-frame contact sheets with what is said in each shot, plus the
+    post's title/description. Long videos reply "STILL WORKING" – then call check_job.
 
     vocabulary: brand names / jargon to spell right. language: ISO code if known (pt, en…).
     """
+
     def work(progress):
         data = api.understand(source, language=language, model=model, vocabulary=vocabulary,
                               max_frames=max_frames, force=force, progress=progress)
@@ -422,7 +426,7 @@ def understand(
         return out
 
     key = f"{source}|{language}|{model}|{max_frames}|{include_images}|{force}|{vocabulary}"
-    return _background("understand", key, source, work)
+    return _background("understand_media", key, source, work)
 
 
 # ------------------------------------------------------------------ prompts
@@ -430,7 +434,7 @@ def understand(
 @_server.prompt()
 def summarize(source: str) -> str:
     """Summarize an audio/video file or link (TikTok, YouTube, voice note…)."""
-    return (f"Use the mediasense `understand` tool on: {source}\n"
+    return (f"Use the mediasense `understand_media` tool on: {source}\n"
             "Then summarize it in my language: a one-line gist, the key points with timestamps (m:ss), "
             "any steps/instructions as a numbered list, links or names mentioned, and the call to action "
             "if there is one. Correct obvious transcription mistakes in names using the title, "
@@ -441,7 +445,7 @@ def summarize(source: str) -> str:
 def explain_video(source: str, question: str = "") -> str:
     """Explain what happens in a video, shot by shot (optionally answer a question about it)."""
     ask = f" Then answer: {question}" if question else ""
-    return (f"Use the mediasense `understand` tool on: {source}\n"
+    return (f"Use the mediasense `understand_media` tool on: {source}\n"
             "Look at the contact sheets and the speech for each shot, and explain the video chronologically "
             "with timestamps: what is shown, what is said, and what the creator is trying to achieve "
             "(structure, hook, persuasion techniques). Use get_frame to read on-screen text you can't make "

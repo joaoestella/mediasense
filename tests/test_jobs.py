@@ -46,12 +46,12 @@ def test_mcp_slow_tool_returns_job_then_result(monkeypatch, video_file, transcri
         return real(*a, progress=progress, **k)
 
     monkeypatch.setattr(api, "understand", slow)
-    first = s.understand(str(video_file))
+    first = s.understand_media(str(video_file))
     assert isinstance(first, str) and first.startswith("STILL WORKING")
     assert "50%" in first and "check_job" in first
     job_id = first.split("job ")[1].split(":")[0]
     # asking again while it runs returns the same job instead of starting another
-    again = s.understand(str(video_file))
+    again = s.understand_media(str(video_file))
     assert isinstance(again, str) and job_id in again
     assert job_id in s.check_job()  # listing
     for _ in range(10):
@@ -66,7 +66,7 @@ def test_mcp_job_error_is_readable(monkeypatch):
 
     monkeypatch.setenv("MEDIASENSE_TOOL_WAIT", "2")
     with pytest.raises(Exception) as e:
-        s.understand("/nope/missing.mp4")
+        s.understand_media("/nope/missing.mp4")
     assert "file not found" in str(e.value)
     with pytest.raises(Exception, match="unknown job"):
         s.check_job("deadbeef")
