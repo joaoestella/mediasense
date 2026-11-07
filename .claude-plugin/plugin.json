@@ -6,8 +6,12 @@
     "name": "joaoestella",
     "url": "https://github.com/joaoestella"
   },
-  "homepage": "https://github.com/joaoestella/mediasense",
+  "homepage": "https://joaoestella.github.io/mediasense/",
   "repository": "https://github.com/joaoestella/mediasense",
+  "documentationUrl": "https://github.com/joaoestella/mediasense#readme",
+  "supportUrl": "https://github.com/joaoestella/mediasense/issues",
+  "privacyPolicyUrl": "https://github.com/joaoestella/mediasense/blob/main/PRIVACY.md",
+  "termsOfServiceUrl": "https://github.com/joaoestella/mediasense/blob/main/LICENSE",
   "license": "MIT",
   "keywords": [
     "video",
