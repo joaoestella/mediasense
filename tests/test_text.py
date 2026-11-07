@@ -125,3 +125,31 @@ def test_remap_transcript(transcript):
     entao = edited.words()[2]
     assert abs(entao.start - 1.05) < 1e-6
     assert abs(edited.duration - 4.0) < 1e-6
+
+
+def test_fillers_respect_real_words_per_language():
+    # Portuguese: "um" is an article, "é" is a verb – unless written as a hesitation
+    assert not is_filler(" um", "pt")
+    assert not is_filler(" um...", "pt")
+    assert not is_filler(" em", "pt")
+    assert not is_filler(" é", "pt")
+    assert is_filler(" É...", "pt")
+    assert is_filler(" é…", "pt")
+    assert is_filler(" ééé", "pt")
+    assert is_filler(" hum", "pt")
+    # English "um" is a filler; German "um" is a preposition
+    assert is_filler(" um", "en")
+    assert not is_filler(" um", "de")
+    assert is_filler(" ähm", "de")
+    # Spanish "e..." is usually a trailing "and…"
+    assert not is_filler(" e...", "es")
+
+
+def test_real_world_portuguese_sentence():
+    words = [" É...", " Voltei", " para", " 13", " Eu", " tô", " testando", " um", " negócio.",
+             " Eu", " vou", " criar", " um...", " tô", " criando", " um", " negócio."]
+    t = Transcript(language="pt", segments=[Segment(0, 20, "", [
+        Word(w, i * 1.0, i * 1.0 + 0.5) for i, w in enumerate(words)])])
+    b = PlanBuilder(20.0, t)
+    assert b.remove_fillers() == 1
+    assert b.build().cuts[0].text == "É..."

@@ -120,15 +120,37 @@ _FILLER_WORDS = {
 }
 _FILLER_NORM = {lang: {normalize(p) for p in pool} for lang, pool in _FILLER_WORDS.items()}
 
+# Sounds that are hesitations in one language but real words in another:
+# "um" is "a/one" in Portuguese and "around" in German, "em" is "in" in Portuguese.
+_REAL_WORDS = {
+    "pt": {"um", "em", "ah", "oi", "ai", "ui", "eh"},
+    "de": {"um", "oh", "ah"},
+    "es": {"un", "eh", "ah"},
+    "it": {"un", "ah"},
+    "fr": {"un", "ah", "oh"},
+    "ca": {"un", "em"},
+    "nl": {"hum", "ah"},
+}
+
+# Whisper marks hesitations with an ellipsis ("É... voltei"). A lone vowel sound
+# followed by one is a filler; the same vowel without it is a word ("é" = is).
+_ELLIPSIS_FILLERS = {"é", "e", "ã", "a", "ah", "eh", "éé", "ée", "hm", "uh", "ehm", "euh", "äh"}
+
 
 def is_filler(word: str, language: str | None = None, extra: Iterable[str] = ()) -> bool:
-    raw = word.strip().casefold().strip(".,!?…;:\"'¿¡()[]、。")
+    stripped = word.strip().casefold()
+    raw = stripped.strip(".,!?…;:\"'¿¡()[]、。")
     n = normalize(word)
     if not n and not raw:
         return False
     if n and n in {normalize(e) for e in extra}:
         return True
     lang = (language or "")[:2]
+    if raw in _REAL_WORDS.get(lang, ()) or n in _REAL_WORDS.get(lang, ()):
+        return False
+    if stripped.endswith(("...", "…")) and raw in _ELLIPSIS_FILLERS and lang not in ("es", "it"):
+        # (in es/it "e…" / "a…" are usually a trailing "and…"/"to…", not a hesitation)
+        return True
     langs = [lang] if lang in _FILLER_WORDS else list(_FILLER_WORDS)
     for code in langs:
         pool = _FILLER_WORDS[code]
