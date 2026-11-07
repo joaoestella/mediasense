@@ -29,11 +29,46 @@ irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 | 
 curl -LsSf https://raw.githubusercontent.com/joaoestella/mediasense/main/install.sh | sh
 ```
 
-O instalador coloca o que estiver faltando (Python, FFmpeg, pipx), instala o mediasense e conecta ao
-Claude Desktop e ao Claude Code. Depois, **feche o Claude Desktop de verdade** (ícone perto do relógio →
-Quit), abra de novo e peça: *"resume esse vídeo: <link>"*.
+Depois, **feche o Claude Desktop de verdade** (ícone perto do relógio → Quit), abra de novo e peça:
+*"resume esse vídeo: <link>"*. A primeira transcrição baixa o modelo de fala, de uns 500 MB.
 
-Se já tiver tudo instalado, basta rodar `mediasense setup`. Se algo der errado, rode `mediasense doctor`.
+**Prefere ler o script antes de rodar?**
+
+```powershell
+irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 -OutFile install.ps1
+notepad install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
+
+O instalador só instala o que estiver faltando: Python 3.12 e FFmpeg pelo `winget`, e o `pipx` pelo pip.
+Depois instala o mediasense deste repositório com o `pipx` e roda o `mediasense setup`. Ele para no
+primeiro erro.
+
+**Instalação manual, sem script e sem precisar de Git:**
+
+```powershell
+winget install ffmpeg
+python -m pip install --user pipx
+python -m pipx ensurepath                # depois feche e reabra o terminal
+python -m pipx install "mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
+mediasense setup -n                      # mostra o que vai mudar, sem mudar nada
+mediasense setup
+mediasense doctor
+```
+
+Use `python -m pipx` em vez de só `pipx` logo depois de instalar: o comando `pipx` só aparece num
+terminal novo.
+
+**O que o `mediasense setup` altera:**
+
+- **Claude Desktop:** adiciona só a entrada `mcpServers.mediasense` no `claude_desktop_config.json`.
+  Mantém todo o resto do arquivo e guarda a versão anterior ao lado, como `.bak`. Funciona também com
+  a versão da Microsoft Store, que usa uma pasta diferente.
+- **Claude Code** (se estiver instalado): roda `claude mcp add --scope user mediasense …`.
+- Nada além disso. Para desfazer, apague a entrada `mediasense` do arquivo e rode
+  `claude mcp remove mediasense --scope user`.
+
+Se algo der errado, rode `mediasense doctor`.
 
 > **Importante:** no Claude Desktop, arquivos anexados no chat vão para o modelo, e não para o seu
 > computador. Mande um **link ou o caminho do arquivo**. No Claude Code, dá para arrastar o arquivo

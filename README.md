@@ -32,20 +32,53 @@ irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 | 
 curl -LsSf https://raw.githubusercontent.com/joaoestella/mediasense/main/install.sh | sh
 ```
 
-That installs whatever is missing (Python, FFmpeg, pipx), installs mediasense and connects it to Claude
-Desktop and Claude Code. Then **quit Claude Desktop completely** (tray/menu-bar icon → Quit), open it
-again and ask *"summarize this video: <link>"*. The first transcription downloads the speech model
-(≈ 500 MB).
+Then **quit Claude Desktop completely** (tray/menu-bar icon → Quit), open it again and ask
+*"summarize this video: <link>"*. The first transcription downloads the speech model (≈ 500 MB).
 
 <details>
-<summary>Manual setup</summary>
+<summary>Prefer to read the script before running it?</summary>
 
-1. Install FFmpeg: `winget install ffmpeg` · `brew install ffmpeg` · `sudo apt install ffmpeg`
-2. `pipx install "mediasense[all] @ git+https://github.com/joaoestella/mediasense"`
-3. `mediasense setup` – adds mediasense to Claude Desktop's config (keeping your other settings and a
-   backup) and to Claude Code if it's installed. `--desktop` / `--code` to pick one, `-n` to preview.
+```powershell
+irm https://raw.githubusercontent.com/joaoestella/mediasense/main/install.ps1 -OutFile install.ps1
+notepad install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1
+```
 
+(macOS/Linux: `curl -LsSfO …/install.sh`, read it, then `sh install.sh`.)
+
+The installer only installs what is missing — Python 3.12 and FFmpeg via `winget` (Homebrew/apt on
+macOS/Linux) and `pipx` via pip — then `pipx install`s mediasense from this repository and runs
+`mediasense setup`. It stops at the first failed step.
 </details>
+
+<details>
+<summary>Manual setup (no script)</summary>
+
+```powershell
+winget install ffmpeg                    # macOS: brew install ffmpeg · Linux: sudo apt install ffmpeg
+python -m pip install --user pipx
+python -m pipx ensurepath                # then close and reopen the terminal
+python -m pipx install "mediasense[all] @ https://github.com/joaoestella/mediasense/archive/refs/heads/main.zip"
+mediasense setup -n                      # preview what setup will change
+mediasense setup
+mediasense doctor
+```
+
+Use `python -m pipx …` rather than plain `pipx` right after installing it: the `pipx` command only
+appears on PATH in a new terminal. No Git needed.
+</details>
+
+### What `mediasense setup` changes
+
+- **Claude Desktop:** adds one entry, `mcpServers.mediasense`, to `claude_desktop_config.json`
+  (`%APPDATA%\Claude\` – or `%LOCALAPPDATA%\Packages\Claude_…\LocalCache\Roaming\Claude\` for the
+  Microsoft Store app – `~/Library/Application Support/Claude/` on macOS, `~/.config/Claude/` on
+  Linux). Everything else in the file is kept, and the previous file is saved next to it as
+  `claude_desktop_config.json.<date>.bak`. If the file isn't valid JSON, setup stops without touching it.
+- **Claude Code** (if installed): runs `claude mcp add --scope user mediasense -- <path>\mediasense mcp`.
+- Nothing else. `mediasense setup -n` shows the exact changes without making them; `--desktop` or
+  `--code` limits it to one app. To undo: remove the `mediasense` entry from the config file and run
+  `claude mcp remove mediasense --scope user`.
 
 Something not working? `mediasense doctor` checks FFmpeg, the speech model, the GPU, link downloads and
 the Claude connection.
