@@ -84,6 +84,10 @@ appears on PATH in a new terminal. No Git needed.
   `--code` limits it to one app. To undo: remove the `mediasense` entry from the config file and run
   `claude mcp remove mediasense --scope user`.
 
+Updating on Windows and pipx says a file "is being used by another process"? Claude Desktop is still
+running the old server: `Get-Process mediasense | Stop-Process -Force`, then install again (the
+installer script does this for you).
+
 Something not working? `mediasense doctor` checks FFmpeg, the speech model, the GPU, link downloads and
 the Claude connection.
 

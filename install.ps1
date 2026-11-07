@@ -80,6 +80,14 @@ try {
     Quiet { & $py -m pipx ensurepath --force | Out-Null }   # harmless if already done
     Add-NewPath
 
+    # A running copy (Claude Desktop keeps the MCP server alive) locks mediasense.exe on Windows
+    $running = Get-Process mediasense -ErrorAction SilentlyContinue
+    if ($running) {
+        Write-Host "Stopping the running mediasense server so it can be updated..."
+        $running | Stop-Process -Force
+        Start-Sleep -Seconds 1
+    }
+
     Step "Installing mediasense (downloads ~200 MB of libraries, takes a few minutes)"
     & $py -m pipx install --force $Package
     Check "pipx install mediasense"
