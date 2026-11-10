@@ -248,7 +248,7 @@ def search_transcript(path: str, phrase: str) -> str:
 
 
 def _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers, filler_words,
-          silences, silence_keep, silence_source, occurrence):
+          silences, silence_keep, silence_source, occurrence, exact_cuts=False):
     src = _path(path, download=False)
     t = api.load_transcript_for(src)
     plan, info, report = api.plan_edit(
@@ -259,7 +259,7 @@ def _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers, filler
         keep_only=api.parse_range(keep_only) if keep_only else None,
         fillers=fillers, filler_words=filler_words or [],
         silences=silences, silence_keep=silence_keep, silence_source=silence_source,
-        occurrence=occurrence,
+        occurrence=occurrence, snap=not exact_cuts,
     )
     return src, t, plan, info, report
 
@@ -277,6 +277,7 @@ def plan_edit(
     silence_keep: float = 0.2,
     silence_source: str = "audio",
     occurrence: int | None = None,
+    exact_cuts: bool = False,
 ) -> str:
     """Preview an edit without writing anything. Same arguments as render_edit.
 
@@ -286,9 +287,11 @@ def plan_edit(
     fillers: remove um/uh/éé/hum/euh/äh…; filler_words adds more ("tipo", "you know").
     silences: shorten pauses longer than N seconds, leaving silence_keep seconds.
     silence_source: "audio" (level based) or "transcript" (gaps between words; better with background music).
+    Word timestamps are approximate, so every cut point is moved to the nearest real pause in the audio
+    (marked "moved to the pause") and no word gets clipped. exact_cuts=true cuts at the exact times instead.
     """
     _, _, plan, _, report = _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers,
-                                  filler_words, silences, silence_keep, silence_source, occurrence)
+                                  filler_words, silences, silence_keep, silence_source, occurrence, exact_cuts)
     extra = f"\nnot found: {report['not_found']}" if report["not_found"] else ""
     return plan.summary(limit=200) + extra
 
@@ -306,6 +309,7 @@ def render_edit(
     silence_keep: float = 0.2,
     silence_source: str = "audio",
     occurrence: int | None = None,
+    exact_cuts: bool = False,
     output: str | None = None,
     edl: bool = False,
     fcpxml: bool = False,
@@ -320,7 +324,8 @@ def render_edit(
     def work(progress):
         progress("planning the edit…")
         src, t, plan, info, report = _plan(path, cut_phrases, cut_between, cut_ranges, keep_only, fillers,
-                                           filler_words, silences, silence_keep, silence_source, occurrence)
+                                           filler_words, silences, silence_keep, silence_source, occurrence,
+                                           exact_cuts)
         if not plan.cuts:
             return "Nothing to cut." + (f" Not found: {report['not_found']}" if report["not_found"] else "")
         progress(f"rendering {len(plan.cuts)} cut(s)…")
@@ -337,7 +342,8 @@ def render_edit(
         return "\n".join(lines)
 
     key = json.dumps([path, cut_phrases, cut_between, cut_ranges, keep_only, fillers, filler_words, silences,
-                      silence_keep, silence_source, occurrence, output, edl, fcpxml, srt, media], default=str)
+                      silence_keep, silence_source, occurrence, exact_cuts, output, edl, fcpxml, srt, media],
+                     default=str)
     return _background("render_edit", key, path, work)
 
 

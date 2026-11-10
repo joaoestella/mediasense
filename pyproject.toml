@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "mediasense"
-version = "0.5.1"
+version = "0.5.2"
 description = "Let Claude listen to audio and watch video: transcribe voice messages, podcasts and recordings with word timestamps (~99 languages), and summarize or edit TikTok/YouTube links. MCP server + CLI, runs locally."
 readme = "README.md"
 license = { text = "MIT" }

@@ -137,6 +137,11 @@ O original nunca é alterado: o resultado sai como `<nome>.edited.*` ou `<nome>.
 
 - **Nomes próprios:** o Whisper pode escrever "Cloud Fair" no lugar de Cloudflare. Use `--vocab`. Pelo
   Claude, isso é feito automaticamente quando ele consegue deduzir os nomes do título ou da tela.
+- **Cortes limpos:** os tempos de cada palavra que o Whisper dá são aproximados; o fim da palavra
+  costuma vir 50-200 ms adiantado. Por isso, antes de renderizar, cada ponto de corte é levado para a
+  pausa real mais próxima no áudio (achada pelo volume), e a última palavra antes do corte nunca é
+  cortada no meio. O plano marca esses cortes com "moved to the pause"; `--exact` (ou `exact_cuts` pelo
+  Claude) corta exatamente nos tempos dados.
 - **Vícios de fala:** use `--verbatim` para mantê-los na transcrição e poder cortar. Palavras reais são
   protegidas por idioma: "um" é artigo em português e nunca é cortado.
 - **Velocidade:** tudo funciona só com a CPU. Vídeos curtos ficam prontos em segundos, e alguns minutos

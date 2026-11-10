@@ -95,7 +95,7 @@ def cmd_edit(args) -> int:
         fillers=args.fillers, filler_words=args.filler_word or [],
         silences=args.silences, silence_keep=args.silence_keep,
         silence_source=args.silence_source, noise_db=args.noise_db,
-        occurrence=args.occurrence, pad=args.pad,
+        occurrence=args.occurrence, pad=args.pad, snap=not args.exact,
     )
     for nf in report["not_found"]:
         _p(f"warning: not found in transcript: {nf!r}")
@@ -296,6 +296,9 @@ def build_parser() -> argparse.ArgumentParser:
                    help="detect pauses from the audio level or from gaps between words (better with music)")
     g.add_argument("--noise-db", type=float, default=-35.0, help="silence threshold in dB (default -35)")
     g.add_argument("--pad", type=float, default=0.12, help="max seconds to extend word cuts into pauses")
+    g.add_argument("--exact", action="store_true",
+                   help="cut exactly at the given times; by default every cut point is moved to the "
+                        "nearest real pause in the audio so no word is clipped")
     o = s.add_argument_group("output")
     o.add_argument("-n", "--dry-run", action="store_true", help="only show what would be cut")
     o.add_argument("--no-render", action="store_true", help="don't write media, only exports")

@@ -1,6 +1,6 @@
 {
   "name": "mediasense",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "description": "Let Claude listen to audio and watch video: transcribe voice messages, podcasts, recordings and meetings, and summarize or edit TikTok, YouTube and Instagram videos. Runs locally.",
   "author": {
     "name": "joaoestella",

@@ -209,6 +209,10 @@ EDL opens in Premiere, Resolve and Avid; FCPXML in Final Cut Pro and Resolve.
 
 - **Names and jargon.** Whisper may write "Cloud Fair" for Cloudflare. Pass `--vocab` (Claude does this
   automatically when it can infer the names from the title or the screen).
+- **Clean cuts.** Whisper's word timestamps are approximate: the end of a word is usually reported
+  50-200 ms early. So before rendering, every cut point is moved to the nearest real pause in the audio
+  (found from its loudness), and the last word before a cut is never clipped. The plan marks these cuts
+  "moved to the pause"; `--exact` (or `exact_cuts` in Claude) cuts at the exact times instead.
 - **Fillers.** Whisper tends to leave hesitations out; transcribe with `--verbatim` when you want to cut
   them. Real words are protected per language ("um" is an article in Portuguese, so it is never cut
   there). Ambiguous words like "like", "tipo" or "né" are only removed if you list them.

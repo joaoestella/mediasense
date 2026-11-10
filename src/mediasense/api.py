@@ -59,8 +59,14 @@ def plan_edit(
     noise_db: float = -35.0,
     occurrence: int | None = None,
     pad: float = 0.12,
+    snap: bool = True,
 ) -> tuple[EditPlan, MediaInfo, dict]:
-    """Build an edit plan. Returns (plan, media info, report of what matched)."""
+    """Build an edit plan. Returns (plan, media info, report of what matched).
+
+    snap: move every cut point into a real pause in the audio, so the end of the
+    word before a cut and the start of the word after it are never clipped
+    (transcript timestamps are only approximate).
+    """
     info = probe(media)
     b = PlanBuilder(info.duration, transcript, max_pad=pad)
     report: dict = {"not_found": []}
@@ -83,7 +89,12 @@ def plan_edit(
         else:
             gaps = detect_silences(media, noise_db=noise_db, min_duration=silences)
         report["silences"] = b.remove_silences(gaps, keep=silence_keep)
-    return b.build(), info, report
+    plan = b.build()
+    if snap and plan.cuts and info.has_audio:
+        from .boundaries import Envelope
+
+        plan, report["adjusted"] = plan.snapped(Envelope.from_media(media))
+    return plan, info, report
 
 
 def apply_plan(

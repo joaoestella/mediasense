@@ -3,7 +3,7 @@
   "name": "io.github.joaoestella/mediasense",
   "title": "mediasense",
   "description": "Let Claude listen to audio and watch video: transcribe, summarize and edit recordings and links.",
-  "version": "0.5.1",
+  "version": "0.5.2",
   "websiteUrl": "https://joaoestella.github.io/mediasense/",
   "repository": {
     "url": "https://github.com/joaoestella/mediasense",
@@ -14,7 +14,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "mediasense",
-      "version": "0.5.1",
+      "version": "0.5.2",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"

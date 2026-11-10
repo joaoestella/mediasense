@@ -166,17 +166,33 @@ def is_filler(word: str, language: str | None = None, extra: Iterable[str] = ())
 
 
 # --------------------------------------------------------------- plan
+_WORD_SLACK = 0.2  # how far a removed word's own timestamps may be off
+
+
+def _join_spans(a: tuple[float, float] | None, b: tuple[float, float] | None) -> tuple[float, float] | None:
+    if a is None or b is None:
+        return a or b
+    return min(a[0], b[0]), max(a[1], b[1])
+
+
 @dataclass
 class Cut:
     start: float
     end: float
     reason: str
     text: str = ""
+    adjusted: bool = False  # moved to the real pause in the audio (see boundaries.py)
+    # (start of the first removed word, end of the last one) for cuts made from the transcript:
+    # snapping may not move the cut so far that it no longer covers those words
+    words: tuple[float, float] | None = None
 
     def to_dict(self) -> dict:
-        return {"start": round(self.start, 3), "end": round(self.end, 3),
-                "start_tc": fmt_time(self.start), "end_tc": fmt_time(self.end),
-                "length": round(self.end - self.start, 3), "reason": self.reason, "text": self.text}
+        d = {"start": round(self.start, 3), "end": round(self.end, 3),
+             "start_tc": fmt_time(self.start), "end_tc": fmt_time(self.end),
+             "length": round(self.end - self.start, 3), "reason": self.reason, "text": self.text}
+        if self.adjusted:
+            d["adjusted"] = True
+        return d
 
 
 @dataclass
@@ -212,12 +228,57 @@ class EditPlan:
             "keep": [[round(a, 3), round(b, 3)] for a, b in self.keep],
         }
 
+    def snapped(self, env, reach: float | None = None) -> tuple[EditPlan, int]:
+        """Same plan with every cut point moved into a real pause, so no word is clipped.
+
+        ``env`` is a :class:`mediasense.boundaries.Envelope` of the same media.
+        Returns (new plan, number of cuts that moved).
+        """
+        from .boundaries import REACH, snap_cut
+
+        moved, out = 0, []
+        for c in self.cuts:
+            limits = None
+            if c.words:  # leave at least most of the removed words inside the cut
+                limits = (c.words[0] + _WORD_SLACK, c.words[1] - _WORD_SLACK)
+            got = snap_cut(c.start, c.end, env, REACH if reach is None else reach, limits)
+            if got is None:  # no pause anywhere in the span
+                if set(c.reason.split("+")) == {"silence"}:
+                    moved += 1  # a "silence" with sound all through it (music, noise): leave it
+                    continue
+                out.append(Cut(c.start, c.end, c.reason, c.text, c.adjusted, c.words))
+                continue
+            s, e = got
+            if c.start <= 0.0:
+                s = 0.0
+            if c.end >= self.duration:
+                e = self.duration
+            changed = abs(s - c.start) > 0.005 or abs(e - c.end) > 0.005
+            moved += changed
+            out.append(Cut(s, e, c.reason, c.text, c.adjusted or changed, c.words))
+        out.sort(key=lambda c: c.start)
+        merged: list[Cut] = []
+        for c in out:  # snapping can make neighbouring cuts touch
+            if merged and c.start <= merged[-1].end:
+                last = merged[-1]
+                last.end = max(last.end, c.end)
+                last.adjusted = last.adjusted or c.adjusted
+                last.words = _join_spans(last.words, c.words)
+                if c.reason not in last.reason.split("+"):
+                    last.reason += "+" + c.reason
+                if c.text and c.text not in last.text:
+                    last.text = (last.text + " " + c.text).strip()
+            else:
+                merged.append(c)
+        return EditPlan(duration=self.duration, cuts=merged), moved
+
     def summary(self, limit: int = 50) -> str:
         lines = [f"{len(self.cuts)} cut(s), removing {self.removed:.2f}s "
                  f"({fmt_time(self.duration)} -> {fmt_time(self.new_duration)})"]
         for c in self.cuts[:limit]:
             txt = f'  "{c.text}"' if c.text else ""
-            lines.append(f"  - {fmt_time(c.start)} → {fmt_time(c.end)}  [{c.reason}]{txt}")
+            mark = "  (moved to the pause)" if c.adjusted else ""
+            lines.append(f"  - {fmt_time(c.start)} → {fmt_time(c.end)}  [{c.reason}]{txt}{mark}")
         if len(self.cuts) > limit:
             lines.append(f"  … and {len(self.cuts) - limit} more")
         return "\n".join(lines)
@@ -251,10 +312,12 @@ class PlanBuilder:
         end += min(self.max_pad, max(0.0, (next_start - end) / 2))
         return max(0.0, start), min(self.duration, end)
 
-    def _add(self, start: float, end: float, reason: str, text: str = "") -> None:
+    def _add(self, start: float, end: float, reason: str, text: str = "",
+             words: tuple[int, int] | None = None) -> None:
         start, end = max(0.0, start), min(self.duration, end)
+        span = (self.words[words[0]].start, self.words[words[1]].end) if words else None
         if end - start > 0.005:
-            self._cuts.append(Cut(start, end, reason, text))
+            self._cuts.append(Cut(start, end, reason, text, words=span))
 
     # -- operations -----------------------------------------------------
     def remove_range(self, start: float, end: float, reason: str = "range") -> PlanBuilder:
@@ -278,7 +341,7 @@ class PlanBuilder:
         chosen = matches if occurrence is None else matches[occurrence - 1:occurrence]
         for m in chosen:
             s, e = self._padded(m.first_word, m.last_word)
-            self._add(s, e, "phrase", m.text)
+            self._add(s, e, "phrase", m.text, (m.first_word, m.last_word))
         return chosen
 
     def remove_between(self, start_phrase: str, end_phrase: str, inclusive: bool = True,
@@ -302,7 +365,7 @@ class PlanBuilder:
                 return None
         s, e = self._padded(i, j)
         text = join_words([w.text for w in self.words[i:j + 1]])
-        self._add(s, e, "between", text)
+        self._add(s, e, "between", text, (i, j))
         return Match(s, e, i, j, text)
 
     def remove_fillers(self, extra: Iterable[str] = (), language: str | None = None) -> int:
@@ -315,12 +378,12 @@ class PlanBuilder:
         for i, w in enumerate(words):
             if is_filler(w.text, lang, single):
                 s, e = self._padded(i, i)
-                self._add(s, e, "filler", w.text.strip())
+                self._add(s, e, "filler", w.text.strip(), (i, i))
                 n += 1
         for phrase in multi:
             for m in find_phrase(self.transcript, phrase, words):
                 s, e = self._padded(m.first_word, m.last_word)
-                self._add(s, e, "filler", m.text)
+                self._add(s, e, "filler", m.text, (m.first_word, m.last_word))
                 n += 1
         return n
 
@@ -356,12 +419,13 @@ class PlanBuilder:
             if merged and c.start <= merged[-1].end + self.min_keep:
                 last = merged[-1]
                 last.end = max(last.end, c.end)
+                last.words = _join_spans(last.words, c.words)
                 if c.reason not in last.reason.split("+"):
                     last.reason += "+" + c.reason
                 if c.text and c.text not in last.text:
                     last.text = (last.text + " " + c.text).strip()
             else:
-                merged.append(Cut(c.start, c.end, c.reason, c.text))
+                merged.append(Cut(c.start, c.end, c.reason, c.text, words=c.words))
         # avoid slivers at the very start/end
         if merged and merged[0].start < self.min_keep:
             merged[0].start = 0.0
